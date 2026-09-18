@@ -1,0 +1,50 @@
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr 240px;
+  height: 100vh;
+}
+
+.toolbar,
+.palette-panel {
+  padding: 16px;
+  border-right: 1px solid #ddd;
+  overflow-y: auto;
+}
+
+.palette-panel {
+  border-right: none;
+  border-left: 1px solid #ddd;
+}
+
+.tool-placeholder {
+  color: #888;
+  font-size: 0.85rem;
+}
+
+.canvas-area {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.canvas-meta {
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: #555;
+  border-bottom: 1px solid #ddd;
+}
+
+.canvas-scroll {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+}
+
+.canvas-grid__bg {
+  fill: #fff;
+}
+
+.canvas-grid__lines line {
+  stroke: #ddd;
+  stroke-width: 1;
+}
