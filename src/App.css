@@ -75,6 +75,68 @@
   cursor: default;
 }
 
+.selected-panel {
+  border-top: 1px solid #333;
+  padding-top: 16px;
+}
+
+.selected-panel__label {
+  font-size: 0.85rem;
+  color: #aaa;
+  font-style: italic;
+}
+
+.field-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #888;
+  margin-top: 4px;
+}
+
+.button-row {
+  display: flex;
+  gap: 6px;
+}
+
+.toggle-btn {
+  flex: 1;
+}
+
+.toggle-btn--active {
+  outline: 2px solid #646cff;
+  outline-offset: 1px;
+}
+
+.danger-btn {
+  margin-top: 8px;
+  color: #f66;
+}
+
+.canvas-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+
+.zoom-controls button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  line-height: 1;
+}
+
+.canvas-object {
+  cursor: grab;
+}
+
 .canvas-area {
   display: flex;
   flex-direction: column;

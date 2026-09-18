@@ -4,11 +4,15 @@ export type StitchColor = {
   hex: string
 }
 
+export type TextDirection = 'horizontal' | 'vertical'
+
 export type TextObject = {
   id: string
   kind: 'text'
   content: string
   font: string
+  direction: TextDirection
+  scale: number
   x: number
   y: number
   color: StitchColor

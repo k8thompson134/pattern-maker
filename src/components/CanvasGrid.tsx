@@ -1,20 +1,42 @@
+import { useRef } from 'react'
 import type { CanvasObject } from '../lib/types'
 import { getFont } from '../lib/fonts'
-import { renderTextToCells } from '../lib/textRender'
+import { measureText, renderTextToCells } from '../lib/textRender'
 
 type CanvasGridProps = {
   widthStitches: number
   heightStitches: number
   zoom: number
   objects: CanvasObject[]
+  selectedId: string | null
+  onSelect: (id: string | null) => void
+  onMove: (id: string, x: number, y: number) => void
 }
 
 const CELL_SIZE = 16
 
-export function CanvasGrid({ widthStitches, heightStitches, zoom, objects }: CanvasGridProps) {
+export function CanvasGrid({
+  widthStitches,
+  heightStitches,
+  zoom,
+  objects,
+  selectedId,
+  onSelect,
+  onMove,
+}: CanvasGridProps) {
   const cell = CELL_SIZE * zoom
   const pixelWidth = widthStitches * cell
   const pixelHeight = heightStitches * cell
+
+  const dragRef = useRef<{
+    id: string
+    startPointerX: number
+    startPointerY: number
+    startObjX: number
+    startObjY: number
+    maxX: number
+    maxY: number
+  } | null>(null)
 
   const lines: React.ReactNode[] = []
   for (let x = 0; x <= widthStitches; x++) {
@@ -28,21 +50,67 @@ export function CanvasGrid({ widthStitches, heightStitches, zoom, objects }: Can
     )
   }
 
+  function handlePointerDown(e: React.PointerEvent, obj: CanvasObject) {
+    e.stopPropagation()
+    onSelect(obj.id)
+    if (obj.kind !== 'text') return
+    const font = getFont(obj.font)
+    const { width, height } = measureText(obj.content, font, obj.direction, obj.scale)
+    dragRef.current = {
+      id: obj.id,
+      startPointerX: e.clientX,
+      startPointerY: e.clientY,
+      startObjX: obj.x,
+      startObjY: obj.y,
+      maxX: Math.max(0, widthStitches - width),
+      maxY: Math.max(0, heightStitches - height),
+    }
+    ;(e.target as Element).setPointerCapture(e.pointerId)
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    const drag = dragRef.current
+    if (!drag) return
+    const deltaX = Math.round((e.clientX - drag.startPointerX) / cell)
+    const deltaY = Math.round((e.clientY - drag.startPointerY) / cell)
+    const nextX = Math.min(Math.max(0, drag.startObjX + deltaX), drag.maxX)
+    const nextY = Math.min(Math.max(0, drag.startObjY + deltaY), drag.maxY)
+    onMove(drag.id, nextX, nextY)
+  }
+
+  function handlePointerUp() {
+    dragRef.current = null
+  }
+
   return (
     <svg
       className="canvas-grid"
       width={pixelWidth}
       height={pixelHeight}
       viewBox={`0 0 ${pixelWidth} ${pixelHeight}`}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
     >
-      <rect x={0} y={0} width={pixelWidth} height={pixelHeight} className="canvas-grid__bg" />
+      <rect
+        x={0}
+        y={0}
+        width={pixelWidth}
+        height={pixelHeight}
+        className="canvas-grid__bg"
+        onPointerDown={() => onSelect(null)}
+      />
       <g className="canvas-grid__objects">
         {objects.map((obj) => {
           if (obj.kind !== 'text') return null
           const font = getFont(obj.font)
-          const cells = renderTextToCells(obj.content, font)
+          const cells = renderTextToCells(obj.content, font, obj.direction, obj.scale)
+          const isSelected = obj.id === selectedId
           return (
-            <g key={obj.id}>
+            <g
+              key={obj.id}
+              className={isSelected ? 'canvas-object canvas-object--selected' : 'canvas-object'}
+              onPointerDown={(e) => handlePointerDown(e, obj)}
+            >
               {cells.map((c, i) => (
                 <rect
                   key={i}
@@ -51,6 +119,8 @@ export function CanvasGrid({ widthStitches, heightStitches, zoom, objects }: Can
                   width={cell}
                   height={cell}
                   fill={obj.color.hex}
+                  stroke={isSelected ? '#646cff' : undefined}
+                  strokeWidth={isSelected ? 1 : undefined}
                 />
               ))}
             </g>

@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
 import { CanvasGrid } from './components/CanvasGrid'
-import { createEmptyProject, type TextObject } from './lib/types'
+import { createEmptyProject, type TextDirection, type TextObject } from './lib/types'
 import { loadProject, saveProject } from './lib/storage'
-import { AVAILABLE_FONTS } from './lib/fonts'
+import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { measureText } from './lib/textRender'
-import { getFont } from './lib/fonts'
 import './App.css'
+
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 2.5
 
 function App() {
   const [project, setProject] = useState(() => loadProject() ?? createEmptyProject('Untitled'))
   const [draftText, setDraftText] = useState('')
   const [draftFontId, setDraftFontId] = useState(AVAILABLE_FONTS[0].id)
   const [draftColor, setDraftColor] = useState(DMC_STARTER_COLORS[0])
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   useEffect(() => {
     saveProject(project)
@@ -20,22 +23,57 @@ function App() {
 
   const inchesWidth = (project.widthStitches / project.fabric.stitchesPerInch).toFixed(1)
   const inchesHeight = (project.heightStitches / project.fabric.stitchesPerInch).toFixed(1)
+  const selectedObject = project.objects.find((o) => o.id === selectedId) ?? null
 
   function addTextObject() {
     if (!draftText.trim()) return
     const font = getFont(draftFontId)
-    const { width, height } = measureText(draftText, font)
+    const { width, height } = measureText(draftText, font, 'horizontal', 1)
     const newObject: TextObject = {
       id: crypto.randomUUID(),
       kind: 'text',
       content: draftText,
       font: draftFontId,
+      direction: 'horizontal',
+      scale: 1,
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
       color: draftColor,
     }
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
     setDraftText('')
+  }
+
+  function updateSelectedObject(patch: Partial<TextObject>) {
+    if (!selectedObject) return
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) =>
+        o.id === selectedObject.id && o.kind === 'text' ? { ...o, ...patch } : o,
+      ),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  function deleteSelectedObject() {
+    if (!selectedObject) return
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.filter((o) => o.id !== selectedObject.id),
+      updatedAt: new Date().toISOString(),
+    }))
+    setSelectedId(null)
+  }
+
+  function moveObject(id: string, x: number, y: number) {
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) => (o.id === id ? { ...o, x, y } : o)),
+    }))
+  }
+
+  function setZoom(zoom: number) {
+    setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
   }
 
   return (
@@ -77,12 +115,76 @@ function App() {
             Add text
           </button>
         </div>
+
+        {selectedObject && selectedObject.kind === 'text' && (
+          <div className="tool-section selected-panel">
+            <h3>Selected text</h3>
+            <p className="selected-panel__label">"{selectedObject.content}"</p>
+
+            <label className="field-label">Direction</label>
+            <div className="button-row">
+              {(['horizontal', 'vertical'] as TextDirection[]).map((dir) => (
+                <button
+                  key={dir}
+                  type="button"
+                  className={`toggle-btn${selectedObject.direction === dir ? ' toggle-btn--active' : ''}`}
+                  onClick={() => updateSelectedObject({ direction: dir })}
+                >
+                  {dir === 'horizontal' ? 'Across' : 'Down'}
+                </button>
+              ))}
+            </div>
+
+            <label className="field-label">Size</label>
+            <div className="button-row">
+              {[1, 2, 3].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className={`toggle-btn${selectedObject.scale === s ? ' toggle-btn--active' : ''}`}
+                  onClick={() => updateSelectedObject({ scale: s })}
+                >
+                  {s}×
+                </button>
+              ))}
+            </div>
+
+            <label className="field-label">Color</label>
+            <div className="swatch-row">
+              {DMC_STARTER_COLORS.map((c) => (
+                <button
+                  key={c.dmcCode}
+                  type="button"
+                  className={`swatch${selectedObject.color.dmcCode === c.dmcCode ? ' swatch--selected' : ''}`}
+                  style={{ backgroundColor: c.hex }}
+                  title={`DMC ${c.dmcCode} · ${c.name}`}
+                  onClick={() => updateSelectedObject({ color: c })}
+                />
+              ))}
+            </div>
+
+            <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
+              Delete
+            </button>
+          </div>
+        )}
       </aside>
 
       <main className="canvas-area">
         <div className="canvas-meta">
-          {project.widthStitches}×{project.heightStitches} stitches · {inchesWidth}"×{inchesHeight}" at{' '}
-          {project.fabric.stitchesPerInch} stitches/inch
+          <span>
+            {project.widthStitches}×{project.heightStitches} stitches · {inchesWidth}"×{inchesHeight}" at{' '}
+            {project.fabric.stitchesPerInch} stitches/inch
+          </span>
+          <span className="zoom-controls">
+            <button type="button" onClick={() => setZoom(project.zoom - 0.25)} disabled={project.zoom <= MIN_ZOOM}>
+              −
+            </button>
+            {Math.round(project.zoom * 100)}%
+            <button type="button" onClick={() => setZoom(project.zoom + 0.25)} disabled={project.zoom >= MAX_ZOOM}>
+              +
+            </button>
+          </span>
         </div>
         <div className="canvas-scroll">
           <CanvasGrid
@@ -90,6 +192,9 @@ function App() {
             heightStitches={project.heightStitches}
             zoom={project.zoom}
             objects={project.objects}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onMove={moveObject}
           />
         </div>
       </main>
