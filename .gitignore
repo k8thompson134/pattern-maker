@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Private notes/planning — keep local, never push (may reference private APIs)
+CLAUDE.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
