@@ -11,6 +11,7 @@ import { ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas } from './lib/objectMeasure'
 import { createId } from './lib/id'
+import { alignObject, type Alignment } from './lib/align'
 import './App.css'
 
 const MIN_ZOOM = 0.25
@@ -122,6 +123,64 @@ function App() {
     }))
   }
 
+  function nudgeSelectedObject(dx: number, dy: number) {
+    if (!selectedObject) return
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) =>
+        o.id === selectedObject.id
+          ? clampToCanvas({ ...o, x: o.x + dx, y: o.y + dy }, p.widthStitches, p.heightStitches)
+          : o,
+      ),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  function alignSelectedObject(alignment: Alignment) {
+    if (!selectedObject) return
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) =>
+        o.id === selectedObject.id ? alignObject(o, p.widthStitches, p.heightStitches, alignment) : o,
+      ),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!selectedId) return
+      const active = document.activeElement
+      const isTyping =
+        active instanceof HTMLInputElement || active instanceof HTMLSelectElement || active instanceof HTMLTextAreaElement
+      if (isTyping) return
+
+      const step = e.shiftKey ? 5 : 1
+      switch (e.key) {
+        case 'ArrowLeft':
+          e.preventDefault()
+          nudgeSelectedObject(-step, 0)
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          nudgeSelectedObject(step, 0)
+          break
+        case 'ArrowUp':
+          e.preventDefault()
+          nudgeSelectedObject(0, -step)
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          nudgeSelectedObject(0, step)
+          break
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, selectedObject])
+
   function setZoom(zoom: number) {
     setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
   }
@@ -224,6 +283,30 @@ function App() {
                 selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
               }
             />
+
+            <label className="field-label">Align</label>
+            <div className="button-row">
+              <button type="button" onClick={() => alignSelectedObject('left')}>
+                Left
+              </button>
+              <button type="button" onClick={() => alignSelectedObject('center-h')}>
+                Center
+              </button>
+              <button type="button" onClick={() => alignSelectedObject('right')}>
+                Right
+              </button>
+            </div>
+            <div className="button-row">
+              <button type="button" onClick={() => alignSelectedObject('top')}>
+                Top
+              </button>
+              <button type="button" onClick={() => alignSelectedObject('center-v')}>
+                Middle
+              </button>
+              <button type="button" onClick={() => alignSelectedObject('bottom')}>
+                Bottom
+              </button>
+            </div>
 
             <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
               Delete

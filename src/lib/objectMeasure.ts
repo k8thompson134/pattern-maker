@@ -19,5 +19,5 @@ export function clampToCanvas<T extends CanvasObject>(
   const { width, height } = measureObject(obj)
   const maxX = Math.max(0, canvasWidth - width)
   const maxY = Math.max(0, canvasHeight - height)
-  return { ...obj, x: Math.min(obj.x, maxX), y: Math.min(obj.y, maxY) }
+  return { ...obj, x: Math.min(Math.max(0, obj.x), maxX), y: Math.min(Math.max(0, obj.y), maxY) }
 }
