@@ -4,6 +4,8 @@ import { measureText } from './textRender'
 import { getIcon } from './icons'
 import { measureIcon } from './iconRender'
 
+export const MAX_OBJECT_SCALE = 3
+
 export function measureObject(obj: CanvasObject): { width: number; height: number } {
   if (obj.kind === 'text') {
     return measureText(obj.content, getFont(obj.font), obj.direction, obj.scale)

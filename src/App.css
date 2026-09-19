@@ -194,6 +194,24 @@
   touch-action: none;
 }
 
+.resize-handle {
+  fill: #fff;
+  stroke: #646cff;
+  stroke-width: 2;
+  touch-action: none;
+  cursor: pointer;
+}
+
+.resize-handle--nw,
+.resize-handle--se {
+  cursor: nwse-resize;
+}
+
+.resize-handle--ne,
+.resize-handle--sw {
+  cursor: nesw-resize;
+}
+
 @media (max-width: 860px) {
   .app-shell {
     display: flex;

@@ -9,7 +9,7 @@ import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { measureText } from './lib/textRender'
 import { ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
-import { clampToCanvas } from './lib/objectMeasure'
+import { clampToCanvas, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import './App.css'
@@ -120,6 +120,14 @@ function App() {
     setProject((p) => ({
       ...p,
       objects: p.objects.map((o) => (o.id === id ? { ...o, x, y } : o)),
+    }))
+  }
+
+  function resizeObject(id: string, patch: { scale: number; x: number; y: number }) {
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+      updatedAt: new Date().toISOString(),
     }))
   }
 
@@ -262,7 +270,7 @@ function App() {
 
             <label className="field-label">Size</label>
             <div className="button-row">
-              {[1, 2, 3].map((s) => (
+              {Array.from({ length: MAX_OBJECT_SCALE }, (_, i) => i + 1).map((s) => (
                 <button
                   key={s}
                   type="button"
@@ -340,6 +348,7 @@ function App() {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onMove={moveObject}
+            onResize={resizeObject}
           />
         </div>
       </main>
