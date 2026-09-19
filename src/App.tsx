@@ -14,7 +14,7 @@ import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import './App.css'
 
-const MIN_ZOOM = 0.25
+const MIN_ZOOM = 0.2
 const MAX_ZOOM = 2.5
 
 function App() {
@@ -33,7 +33,11 @@ function App() {
   useEffect(() => {
     const availableWidth = window.innerWidth - 24
     const fullWidthPx = project.widthStitches * CELL_SIZE
-    const fitZoom = Math.round((Math.min(1, availableWidth / fullWidthPx) * 20)) / 20
+    // Deliberately fits to 60% of available width, not 100% — a canvas that exactly
+    // fills the screen still feels "zoomed in" and pushes the toolbar below the fold
+    // on mobile. Starting noticeably smaller than a tight fit leaves room to see the
+    // tools without scrolling first (reported 2026-09-19: default felt too zoomed in).
+    const fitZoom = Math.round((Math.min(1, (availableWidth * 0.6) / fullWidthPx) * 20)) / 20
     if (fitZoom < project.zoom) {
       setProject((p) => ({ ...p, zoom: Math.max(MIN_ZOOM, fitZoom) }))
     }
