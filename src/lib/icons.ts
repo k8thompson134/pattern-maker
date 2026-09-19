@@ -287,6 +287,42 @@ export const ICON_LIBRARY: IconDef[] = [
   },
 ]
 
+// Tiny (3-5 stitch) decoration icons for Stamp mode — scattering full-size icons
+// (7-9 stitches) as accents around a design reads as cluttered, not decorative.
+// A different, deliberately simplified bitmap per shape, not the full icon
+// shrunk — cross-stitch has no sub-pixel scaling, so "smaller" means redrawing
+// the shape at fewer stitches, not scaling an existing bitmap down.
+export const MINI_ICON_LIBRARY: IconDef[] = [
+  {
+    id: 'mini-heart',
+    name: 'Tiny Heart',
+    width: 5,
+    height: 4,
+    rows: I(['01010', '11111', '01110', '00100']),
+  },
+  {
+    id: 'mini-star',
+    name: 'Tiny Star',
+    width: 5,
+    height: 5,
+    rows: I(['00100', '00100', '11111', '00100', '00100']),
+  },
+  {
+    id: 'mini-dot',
+    name: 'Tiny Dot',
+    width: 3,
+    height: 3,
+    rows: I(['010', '111', '010']),
+  },
+  {
+    id: 'mini-diamond',
+    name: 'Tiny Diamond',
+    width: 5,
+    height: 5,
+    rows: I(['00100', '01110', '11111', '01110', '00100']),
+  },
+]
+
 export function getIcon(id: string): IconDef {
-  return ICON_LIBRARY.find((i) => i.id === id) ?? ICON_LIBRARY[0]
+  return ICON_LIBRARY.find((i) => i.id === id) ?? MINI_ICON_LIBRARY.find((i) => i.id === id) ?? ICON_LIBRARY[0]
 }

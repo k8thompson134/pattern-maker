@@ -7,7 +7,7 @@ import { loadProject, saveProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { measureText } from './lib/textRender'
-import { ICON_LIBRARY, getIcon } from './lib/icons'
+import { ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
@@ -26,6 +26,7 @@ function App() {
   const [draftTextColor, setDraftTextColor] = useState(DMC_STARTER_COLORS[0])
   const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
+  const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drawMode, setDrawMode] = useState(false)
   const [stampMode, setStampMode] = useState(false)
@@ -288,14 +289,16 @@ function App() {
     setSelectedId(null)
   }
 
-  // Stamps a new icon object at the tapped grid position, using the current
-  // draft icon/color — decoration-brush style, for scattering small icons
-  // around a pattern without re-clicking "Add icon" and re-dragging each time.
+  // Stamps a new tiny decoration icon at the tapped grid position — brush
+  // style, for scattering small accents around a pattern without re-clicking
+  // "Add icon" and re-dragging each time. Uses MINI_ICON_LIBRARY (3-5 stitches),
+  // not the main icon library (7-9 stitches) — full-size icons scattered as
+  // decoration read as cluttered, not decorative.
   function addIconObjectAt(gx: number, gy: number) {
     const newObject: IconObject = {
       id: createId(),
       kind: 'icon',
-      iconId: draftIconId,
+      iconId: draftMiniIconId,
       scale: 1,
       x: gx,
       y: gy,
@@ -505,15 +508,28 @@ function App() {
             ))}
           </div>
           <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
-          <div className="button-row">
-            <button type="button" onClick={addIconObject}>
-              Add icon
-            </button>
-            <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
-              {stampMode ? 'Done stamping' : 'Stamp mode'}
-            </button>
+          <button type="button" onClick={addIconObject}>
+            Add icon
+          </button>
+
+          <label className="field-label">Stamp (tiny decoration icons)</label>
+          <div className="icon-grid">
+            {MINI_ICON_LIBRARY.map((icon) => (
+              <button
+                key={icon.id}
+                type="button"
+                className={`icon-thumb-btn${draftMiniIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
+                title={icon.name}
+                onClick={() => setDraftMiniIconId(icon.id)}
+              >
+                <IconThumb icon={icon} color="#ddd" pixelSize={4} />
+              </button>
+            ))}
           </div>
-          {stampMode && <p className="tool-placeholder">Tap the canvas to drop icons as decoration.</p>}
+          <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
+            {stampMode ? 'Done stamping' : 'Stamp mode'}
+          </button>
+          {stampMode && <p className="tool-placeholder">Tap the canvas to drop tiny icons as decoration.</p>}
         </div>
 
         <div className="tool-section">
