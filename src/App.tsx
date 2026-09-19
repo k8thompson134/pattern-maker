@@ -31,10 +31,19 @@ function App() {
   const [drawErase, setDrawErase] = useState(false)
   const [drawColor, setDrawColor] = useState(DMC_STARTER_COLORS[0])
   const [activePixelObjectId, setActivePixelObjectId] = useState<string | null>(null)
+  const [widthInput, setWidthInput] = useState(() => String(project.widthStitches))
+  const [heightInput, setHeightInput] = useState(() => String(project.heightStitches))
+  const [spiInput, setSpiInput] = useState(() => String(project.fabric.stitchesPerInch))
 
   useEffect(() => {
     saveProject(project)
   }, [project])
+
+  useEffect(() => {
+    setWidthInput(String(project.widthStitches))
+    setHeightInput(String(project.heightStitches))
+    setSpiInput(String(project.fabric.stitchesPerInch))
+  }, [project.widthStitches, project.heightStitches, project.fabric.stitchesPerInch])
 
   useEffect(() => {
     const availableWidth = window.innerWidth - 24
@@ -282,11 +291,46 @@ function App() {
       objects: p.objects.map((o) => clampToCanvas(o, w, h)),
       updatedAt: new Date().toISOString(),
     }))
+    setWidthInput(String(w))
+    setHeightInput(String(h))
   }
 
   function setStitchesPerInch(stitchesPerInch: number) {
     const spi = Math.max(1, Math.min(30, Math.round(stitchesPerInch) || 1))
     setProject((p) => ({ ...p, fabric: { ...p.fabric, stitchesPerInch: spi } }))
+    setSpiInput(String(spi))
+  }
+
+  // Width/height/stitches-per-inch inputs keep their own uncommitted text while
+  // typing — committing (and clamping to >= 1) on every keystroke meant clearing
+  // the field to type a fresh number immediately snapped back to "1" before the
+  // next digit could land, making it impossible to type anything under 10.
+  // Committing on blur/Enter instead lets the field sit empty mid-edit.
+  function commitWidthInput() {
+    const n = Number(widthInput)
+    if (Number.isFinite(n) && n >= 1) {
+      setCanvasSize(n, project.heightStitches)
+    } else {
+      setWidthInput(String(project.widthStitches))
+    }
+  }
+
+  function commitHeightInput() {
+    const n = Number(heightInput)
+    if (Number.isFinite(n) && n >= 1) {
+      setCanvasSize(project.widthStitches, n)
+    } else {
+      setHeightInput(String(project.heightStitches))
+    }
+  }
+
+  function commitSpiInput() {
+    const n = Number(spiInput)
+    if (Number.isFinite(n) && n >= 1) {
+      setStitchesPerInch(n)
+    } else {
+      setSpiInput(String(project.fabric.stitchesPerInch))
+    }
   }
 
   const paletteColors = [
@@ -317,8 +361,10 @@ function App() {
                 type="number"
                 min={1}
                 max={500}
-                value={project.widthStitches}
-                onChange={(e) => setCanvasSize(Number(e.target.value), project.heightStitches)}
+                value={widthInput}
+                onChange={(e) => setWidthInput(e.target.value)}
+                onBlur={commitWidthInput}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
               />
             </label>
             <label>
@@ -327,8 +373,10 @@ function App() {
                 type="number"
                 min={1}
                 max={500}
-                value={project.heightStitches}
-                onChange={(e) => setCanvasSize(project.widthStitches, Number(e.target.value))}
+                value={heightInput}
+                onChange={(e) => setHeightInput(e.target.value)}
+                onBlur={commitHeightInput}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
               />
             </label>
           </div>
@@ -337,8 +385,10 @@ function App() {
             type="number"
             min={1}
             max={30}
-            value={project.fabric.stitchesPerInch}
-            onChange={(e) => setStitchesPerInch(Number(e.target.value))}
+            value={spiInput}
+            onChange={(e) => setSpiInput(e.target.value)}
+            onBlur={commitSpiInput}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           />
         </div>
 
