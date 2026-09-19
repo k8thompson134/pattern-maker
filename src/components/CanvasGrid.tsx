@@ -20,6 +20,8 @@ type CanvasGridProps = {
   drawErase: boolean
   onPaintCell: (gx: number, gy: number) => void
   onEraseCell: (gx: number, gy: number) => void
+  stampMode: boolean
+  onStamp: (gx: number, gy: number) => void
 }
 
 export const CELL_SIZE = 16
@@ -47,6 +49,8 @@ export function CanvasGrid({
   drawErase,
   onPaintCell,
   onEraseCell,
+  stampMode,
+  onStamp,
 }: CanvasGridProps) {
   const cell = CELL_SIZE * zoom
   const pixelWidth = widthStitches * cell
@@ -181,6 +185,15 @@ export function CanvasGrid({
     } else {
       onPaintCell(gx, gy)
     }
+  }
+
+  function handleStampPointerDown(e: React.PointerEvent) {
+    e.preventDefault()
+    const svgRect = svgRef.current?.getBoundingClientRect()
+    if (!svgRect) return
+    const gx = Math.floor((e.clientX - svgRect.left) / cell)
+    const gy = Math.floor((e.clientY - svgRect.top) / cell)
+    onStamp(gx, gy)
   }
 
   return (
@@ -325,6 +338,17 @@ export function CanvasGrid({
           fill="transparent"
           className="draw-overlay"
           onPointerDown={handleDrawPointerDown}
+        />
+      )}
+      {stampMode && (
+        <rect
+          x={0}
+          y={0}
+          width={pixelWidth}
+          height={pixelHeight}
+          fill="transparent"
+          className="draw-overlay"
+          onPointerDown={handleStampPointerDown}
         />
       )}
     </svg>

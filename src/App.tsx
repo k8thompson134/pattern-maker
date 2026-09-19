@@ -9,7 +9,7 @@ import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { measureText } from './lib/textRender'
 import { ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
-import { clampToCanvas, MAX_OBJECT_SCALE } from './lib/objectMeasure'
+import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
@@ -28,12 +28,16 @@ function App() {
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [drawMode, setDrawMode] = useState(false)
+  const [stampMode, setStampMode] = useState(false)
   const [drawErase, setDrawErase] = useState(false)
   const [drawColor, setDrawColor] = useState(DMC_STARTER_COLORS[0])
   const [activePixelObjectId, setActivePixelObjectId] = useState<string | null>(null)
   const [widthInput, setWidthInput] = useState(() => String(project.widthStitches))
   const [heightInput, setHeightInput] = useState(() => String(project.heightStitches))
   const [spiInput, setSpiInput] = useState(() => String(project.fabric.stitchesPerInch))
+  const [repeatCount, setRepeatCount] = useState(5)
+  const [repeatSpacing, setRepeatSpacing] = useState(2)
+  const [repeatDirection, setRepeatDirection] = useState<'horizontal' | 'vertical'>('horizontal')
 
   useEffect(() => {
     saveProject(project)
@@ -135,6 +139,39 @@ function App() {
       updatedAt: new Date().toISOString(),
     }))
     setSelectedId(null)
+  }
+
+  function duplicateSelectedObject() {
+    if (!selectedObject) return
+    const { width } = measureObject(selectedObject)
+    const offset = Math.max(width, 2)
+    const copy = { ...selectedObject, id: createId(), x: selectedObject.x + offset, y: selectedObject.y }
+    setProject((p) => ({
+      ...p,
+      objects: [...p.objects, clampToCanvas(copy, p.widthStitches, p.heightStitches)],
+      updatedAt: new Date().toISOString(),
+    }))
+    setSelectedId(copy.id)
+  }
+
+  // Repeats the selected object `count` times total (the original plus count-1
+  // copies), spaced `spacing` stitches apart edge-to-edge — the "string of
+  // hearts" border use case: pick a direction, a gap, and how many.
+  function repeatSelectedObject(count: number, spacing: number, direction: 'horizontal' | 'vertical') {
+    if (!selectedObject || selectedObject.kind === 'pixels') return
+    const { width, height } = measureObject(selectedObject)
+    const step = direction === 'horizontal' ? width + spacing : height + spacing
+    const copies = Array.from({ length: Math.max(0, count - 1) }, (_, i) => {
+      const n = i + 1
+      const copy = {
+        ...selectedObject,
+        id: createId(),
+        x: direction === 'horizontal' ? selectedObject.x + step * n : selectedObject.x,
+        y: direction === 'vertical' ? selectedObject.y + step * n : selectedObject.y,
+      }
+      return clampToCanvas(copy, project.widthStitches, project.heightStitches)
+    })
+    setProject((p) => ({ ...p, objects: [...p.objects, ...copies], updatedAt: new Date().toISOString() }))
   }
 
   function moveObject(id: string, x: number, y: number) {
@@ -240,7 +277,36 @@ function App() {
       if (wasOn) setActivePixelObjectId(null)
       return !wasOn
     })
+    setStampMode(false)
     setSelectedId(null)
+  }
+
+  function toggleStampMode() {
+    setStampMode((wasOn) => !wasOn)
+    setDrawMode(false)
+    setActivePixelObjectId(null)
+    setSelectedId(null)
+  }
+
+  // Stamps a new icon object at the tapped grid position, using the current
+  // draft icon/color — decoration-brush style, for scattering small icons
+  // around a pattern without re-clicking "Add icon" and re-dragging each time.
+  function addIconObjectAt(gx: number, gy: number) {
+    const newObject: IconObject = {
+      id: createId(),
+      kind: 'icon',
+      iconId: draftIconId,
+      scale: 1,
+      x: gx,
+      y: gy,
+      rotation: 0,
+      color: draftIconColor,
+    }
+    setProject((p) => ({
+      ...p,
+      objects: [...p.objects, clampToCanvas(newObject, p.widthStitches, p.heightStitches)],
+      updatedAt: new Date().toISOString(),
+    }))
   }
 
   useEffect(() => {
@@ -439,9 +505,15 @@ function App() {
             ))}
           </div>
           <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
-          <button type="button" onClick={addIconObject}>
-            Add icon
-          </button>
+          <div className="button-row">
+            <button type="button" onClick={addIconObject}>
+              Add icon
+            </button>
+            <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
+              {stampMode ? 'Done stamping' : 'Stamp mode'}
+            </button>
+          </div>
+          {stampMode && <p className="tool-placeholder">Tap the canvas to drop icons as decoration.</p>}
         </div>
 
         <div className="tool-section">
@@ -479,9 +551,14 @@ function App() {
           <div className="tool-section selected-panel">
             <div className="selected-panel__header">
               <h3>Selected {selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
-              <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
-                Delete
-              </button>
+              <div className="button-row">
+                <button type="button" onClick={duplicateSelectedObject}>
+                  Duplicate
+                </button>
+                <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
+                  Delete
+                </button>
+              </div>
             </div>
             <p className="selected-panel__label">
               {selectedObject.kind === 'text'
@@ -582,6 +659,56 @@ function App() {
               </>
             )}
 
+            {selectedObject.kind !== 'pixels' && (
+              <>
+                <label className="field-label">Repeat (border/string pattern)</label>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className={`toggle-btn${repeatDirection === 'horizontal' ? ' toggle-btn--active' : ''}`}
+                    onClick={() => setRepeatDirection('horizontal')}
+                  >
+                    →
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-btn${repeatDirection === 'vertical' ? ' toggle-btn--active' : ''}`}
+                    onClick={() => setRepeatDirection('vertical')}
+                  >
+                    ↓
+                  </button>
+                </div>
+                <div className="size-input-row">
+                  <label>
+                    Count
+                    <input
+                      type="number"
+                      min={2}
+                      max={50}
+                      value={repeatCount}
+                      onChange={(e) => setRepeatCount(Math.max(2, Math.min(50, Number(e.target.value) || 2)))}
+                    />
+                  </label>
+                  <label>
+                    Gap
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={repeatSpacing}
+                      onChange={(e) => setRepeatSpacing(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => repeatSelectedObject(repeatCount, repeatSpacing, repeatDirection)}
+                >
+                  Repeat
+                </button>
+              </>
+            )}
+
             <label className="field-label">Position</label>
             <div className="dpad">
               <span />
@@ -672,6 +799,8 @@ function App() {
             drawErase={drawErase}
             onPaintCell={paintPixel}
             onEraseCell={erasePixel}
+            stampMode={stampMode}
+            onStamp={addIconObjectAt}
           />
         </div>
       </main>
