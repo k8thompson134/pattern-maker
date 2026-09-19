@@ -431,8 +431,8 @@ function App() {
           </button>
         </div>
 
-        <div className="tool-section">
-          <h3>Canvas Size</h3>
+        <details className="tool-section" open>
+          <summary>Canvas Size</summary>
           <div className="size-input-row">
             <label>
               W
@@ -469,10 +469,10 @@ function App() {
             onBlur={commitSpiInput}
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           />
-        </div>
+        </details>
 
-        <div className="tool-section">
-          <h3>Text</h3>
+        <details className="tool-section" open>
+          <summary>Text</summary>
           <input
             type="text"
             value={draftText}
@@ -490,10 +490,10 @@ function App() {
           <button type="button" onClick={addTextObject}>
             Add text
           </button>
-        </div>
+        </details>
 
-        <div className="tool-section">
-          <h3>Icons</h3>
+        <details className="tool-section" open>
+          <summary>Icons</summary>
           <div className="icon-grid">
             {ICON_LIBRARY.map((icon) => (
               <button
@@ -511,8 +511,10 @@ function App() {
           <button type="button" onClick={addIconObject}>
             Add icon
           </button>
+        </details>
 
-          <label className="field-label">Stamp (tiny decoration icons)</label>
+        <details className="tool-section">
+          <summary>Stamp (tiny decorations)</summary>
           <div className="icon-grid">
             {MINI_ICON_LIBRARY.map((icon) => (
               <button
@@ -522,7 +524,7 @@ function App() {
                 title={icon.name}
                 onClick={() => setDraftMiniIconId(icon.id)}
               >
-                <IconThumb icon={icon} color="#ddd" pixelSize={4} />
+                <IconThumb icon={icon} color="#ddd" pixelSize={6} />
               </button>
             ))}
           </div>
@@ -530,10 +532,10 @@ function App() {
             {stampMode ? 'Done stamping' : 'Stamp mode'}
           </button>
           {stampMode && <p className="tool-placeholder">Tap the canvas to drop tiny icons as decoration.</p>}
-        </div>
+        </details>
 
-        <div className="tool-section">
-          <h3>Draw</h3>
+        <details className="tool-section">
+          <summary>Draw</summary>
           <div className="button-row">
             <button
               type="button"
@@ -561,7 +563,7 @@ function App() {
           {drawMode && (
             <p className="tool-placeholder">Tap cells on the canvas to {drawErase ? 'erase' : 'paint'}.</p>
           )}
-        </div>
+        </details>
 
         {selectedObject && (
           <div className="tool-section selected-panel">

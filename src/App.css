@@ -1,6 +1,6 @@
 .app-shell {
   display: grid;
-  grid-template-columns: 220px 1fr 240px;
+  grid-template-columns: 260px 1fr 260px;
   height: 100vh;
   user-select: none;
   -webkit-user-select: none;
@@ -17,26 +17,43 @@
 
 .toolbar,
 .palette-panel {
-  padding: 16px;
-  border-right: 1px solid #ddd;
+  padding: var(--space-4);
+  background: var(--bg);
+  border-right: 1px solid var(--border);
   overflow-y: auto;
+}
+
+.toolbar h2,
+.palette-panel h2 {
+  margin: 0 0 var(--space-3);
+  font-size: 1.1rem;
 }
 
 .palette-panel {
   border-right: none;
-  border-left: 1px solid #ddd;
+  border-left: 1px solid var(--border);
 }
 
 .tool-placeholder {
-  color: #888;
+  color: var(--text-faint);
   font-size: 0.85rem;
 }
 
+/* Card treatment shared by collapsible <details> tool sections and the
+   always-open Selected-object panel (a plain div, not <details>). */
 .tool-section {
-  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  margin-top: var(--space-3);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
+}
+
+.tool-section:first-of-type {
+  margin-top: 0;
 }
 
 .tool-section input,
@@ -45,9 +62,49 @@
   box-sizing: border-box;
 }
 
+/* <summary> becomes the card's clickable header, full-bleed via negative
+   margin so it reads as an integrated title bar rather than indented text. */
+details.tool-section > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.95rem;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+details.tool-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.tool-section > summary::before {
+  content: '▸';
+  color: var(--text-faint);
+  font-size: 0.7em;
+  transition: transform 0.15s ease;
+}
+
+details.tool-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+details.tool-section[open] > summary {
+  margin-bottom: var(--space-1);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: var(--space-3);
+}
+
+details.tool-section > summary:hover {
+  background: var(--surface-2);
+}
+
 .size-input-row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .size-input-row label {
@@ -56,7 +113,7 @@
   flex-direction: column;
   gap: 2px;
   font-size: 0.75rem;
-  color: #888;
+  color: var(--text-dim);
 }
 
 .size-input-row input {
@@ -67,21 +124,21 @@
 .swatch-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  border: 1px solid #0003;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #ffffff26;
   cursor: pointer;
   padding: 0;
   display: inline-block;
 }
 
 .swatch--selected {
-  outline: 2px solid #646cff;
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
 
@@ -91,14 +148,14 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.85rem;
 }
 
 .palette-list li {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .palette-list .swatch {
@@ -106,19 +163,26 @@
 }
 
 .selected-panel {
-  border-top: 1px solid #333;
-  padding-top: 16px;
+  border-color: var(--accent-bg);
+  background: linear-gradient(var(--surface), var(--surface)) padding-box,
+    linear-gradient(135deg, var(--accent-bg), transparent) border-box;
+  border: 1px solid transparent;
 }
 
 .selected-panel__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: var(--space-2);
+  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
 }
 
 .selected-panel__header h3 {
   margin: 0;
+  font-size: 0.95rem;
+  text-transform: capitalize;
 }
 
 .selected-panel__header .danger-btn {
@@ -128,41 +192,50 @@
 
 .selected-panel__label {
   font-size: 0.85rem;
-  color: #aaa;
+  color: var(--text-dim);
   font-style: italic;
 }
 
 .field-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #888;
-  margin-top: 4px;
+  color: var(--text-faint);
+  margin-top: var(--space-1);
 }
 
 .button-row {
   display: flex;
-  gap: 6px;
+  gap: var(--space-2);
 }
 
 .toggle-btn {
   flex: 1;
 }
 
-.toggle-btn--active {
-  outline: 2px solid #646cff;
-  outline-offset: 1px;
+.toggle-btn--active,
+.icon-thumb-btn--active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .danger-btn {
-  margin-top: 8px;
-  color: #f66;
+  margin-top: var(--space-2);
+  color: var(--danger);
+  background: var(--danger-bg);
+  border-color: var(--danger-bg);
+}
+
+.danger-btn:hover {
+  background: #ff7b7b33;
+  border-color: var(--danger);
 }
 
 .stepper-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .stepper-btn {
@@ -199,22 +272,17 @@
   background: transparent;
 }
 
-.canvas-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
 .zoom-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
   font-size: 0.85rem;
+  color: var(--text-dim);
 }
 
 .zoom-controls button {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   line-height: 1;
 }
@@ -226,7 +294,7 @@
 .icon-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+  gap: var(--space-2);
 }
 
 .icon-thumb-btn {
@@ -234,8 +302,8 @@
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
-  padding: 4px;
-  background: #2a2a2a;
+  padding: var(--space-2);
+  background: var(--surface-2);
 }
 
 .icon-thumb-btn svg {
@@ -243,36 +311,37 @@
   max-height: 100%;
 }
 
-.icon-thumb-btn--active {
-  outline: 2px solid #646cff;
-  outline-offset: 1px;
-}
-
 .canvas-area {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  background: var(--bg);
 }
 
 .canvas-meta {
-  padding: 8px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
   font-size: 0.85rem;
-  color: #555;
-  border-bottom: 1px solid #ddd;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border);
 }
 
 .canvas-scroll {
   flex: 1;
   overflow: auto;
-  padding: 24px;
+  padding: var(--space-5);
+  display: flex;
+  justify-content: center;
 }
 
 .canvas-grid__bg {
-  fill: #fff;
+  fill: #f4f4f6;
 }
 
 .canvas-grid__lines line {
-  stroke: #ddd;
+  stroke: #00000014;
   stroke-width: 1;
   pointer-events: none;
 }
@@ -284,7 +353,7 @@
 
 .resize-handle {
   fill: #fff;
-  stroke: #646cff;
+  stroke: var(--accent);
   stroke-width: 2;
   touch-action: none;
   cursor: pointer;
@@ -315,6 +384,16 @@
 
   .canvas-area {
     order: 1;
+    /* Sticky, not a separate scrolling box — stays visible at the top while
+       Tools/Palette scroll underneath it, so changing an option never
+       scrolls the canvas itself out of view (regression found in testing:
+       a single flat page scroll with no sticky element let the canvas
+       scroll away entirely, making it impossible to see the effect of any
+       change without scrolling back up first). */
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
   }
 
   .toolbar {
@@ -329,20 +408,18 @@
   .palette-panel {
     border-right: none;
     border-left: none;
-    border-top: 1px solid #333;
-  }
-
-  .toolbar {
-    max-height: 50vh;
-  }
-
-  .palette-panel {
-    max-height: 34vh;
+    border-top: 1px solid var(--border);
+    /* Was max-height + overflow-y:auto (an independently-scrolling nested
+       box). Three nested scroll regions stacked on one phone screen was
+       disorienting — one continuous page scroll reads much more predictably,
+       with the canvas kept in view via position:sticky above instead. */
+    max-height: none;
+    overflow-y: visible;
   }
 
   .canvas-scroll {
-    height: 40vh;
-    padding: 12px;
+    height: 32vh;
+    padding: var(--space-3);
   }
 
   .tool-section input,
@@ -356,13 +433,13 @@
   }
 
   .icon-thumb-btn {
-    padding: 8px;
+    padding: var(--space-2);
   }
 
   .toggle-btn,
   .zoom-controls button,
   .tool-section button,
-  .toolbar > button,
+  .toolbar > .button-row button,
   .danger-btn {
     min-height: 40px;
   }
