@@ -144,6 +144,16 @@ function App() {
     }))
   }
 
+  function setSelectedScale(scale: number) {
+    if (!selectedObject) return
+    const clampedScale = Math.min(MAX_OBJECT_SCALE, Math.max(1, scale))
+    if (selectedObject.kind === 'text') {
+      updateTextObject({ scale: clampedScale })
+    } else {
+      updateIconObject({ scale: clampedScale })
+    }
+  }
+
   function alignSelectedObject(alignment: Alignment) {
     if (!selectedObject) return
     setProject((p) => ({
@@ -269,19 +279,45 @@ function App() {
             )}
 
             <label className="field-label">Size</label>
-            <div className="button-row">
-              {Array.from({ length: MAX_OBJECT_SCALE }, (_, i) => i + 1).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  className={`toggle-btn${selectedObject.scale === s ? ' toggle-btn--active' : ''}`}
-                  onClick={() =>
-                    selectedObject.kind === 'text' ? updateTextObject({ scale: s }) : updateIconObject({ scale: s })
-                  }
-                >
-                  {s}×
-                </button>
-              ))}
+            <div className="stepper-row">
+              <button
+                type="button"
+                className="stepper-btn"
+                disabled={selectedObject.scale <= 1}
+                onClick={() => setSelectedScale(selectedObject.scale - 1)}
+              >
+                −
+              </button>
+              <span className="stepper-value">{selectedObject.scale}×</span>
+              <button
+                type="button"
+                className="stepper-btn"
+                disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
+                onClick={() => setSelectedScale(selectedObject.scale + 1)}
+              >
+                +
+              </button>
+            </div>
+
+            <label className="field-label">Position</label>
+            <div className="dpad">
+              <span />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, -1)}>
+                ↑
+              </button>
+              <span />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(-1, 0)}>
+                ←
+              </button>
+              <span className="dpad-center" />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(1, 0)}>
+                →
+              </button>
+              <span />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, 1)}>
+                ↓
+              </button>
+              <span />
             </div>
 
             <label className="field-label">Color</label>
