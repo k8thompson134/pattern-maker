@@ -78,6 +78,7 @@ function App() {
       scale: 1,
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
+      rotation: 0,
       color: draftTextColor,
     }
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
@@ -94,6 +95,7 @@ function App() {
       scale: 1,
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
+      rotation: 0,
       color: draftIconColor,
     }
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
@@ -344,10 +346,18 @@ function App() {
       <aside className="toolbar">
         <h2>Tools</h2>
         <div className="button-row">
-          <button type="button" onClick={() => setProject(createEmptyProject('Untitled'))}>
+          <button type="button" onClick={() => setProject((p) => ({ ...createEmptyProject('Untitled'), zoom: p.zoom }))}>
             New project
           </button>
-          <button type="button" onClick={() => exportProjectToPdf(project)}>
+          <button
+            type="button"
+            onClick={() => {
+              const title = window.prompt('PDF Title:', project.name || '')
+              if (title !== null) {
+                exportProjectToPdf(project, title || undefined)
+              }
+            }}
+          >
             Export PDF
           </button>
         </div>
@@ -501,6 +511,14 @@ function App() {
 
             {selectedObject.kind === 'text' && (
               <>
+                <label className="field-label">Text</label>
+                <input
+                  type="text"
+                  value={selectedObject.content}
+                  onChange={(e) => updateTextObject({ content: e.target.value })}
+                  placeholder="Edit text..."
+                />
+
                 <label className="field-label">Direction</label>
                 <div className="button-row">
                   {(['horizontal', 'vertical'] as TextDirection[]).map((dir) => (
@@ -538,6 +556,28 @@ function App() {
                   >
                     +
                   </button>
+                </div>
+              </>
+            )}
+
+            {selectedObject.kind !== 'pixels' && (
+              <>
+                <label className="field-label">Rotation</label>
+                <div className="button-row">
+                  {[0, 90, 180, 270].map((angle) => (
+                    <button
+                      key={angle}
+                      type="button"
+                      className={`toggle-btn${selectedObject.rotation === angle ? ' toggle-btn--active' : ''}`}
+                      onClick={() =>
+                        selectedObject.kind === 'text'
+                          ? updateTextObject({ rotation: angle })
+                          : updateIconObject({ rotation: angle })
+                      }
+                    >
+                      {angle}°
+                    </button>
+                  ))}
                 </div>
               </>
             )}

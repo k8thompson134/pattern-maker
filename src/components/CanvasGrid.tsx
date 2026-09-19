@@ -216,6 +216,14 @@ export function CanvasGrid({
               key={obj.id}
               className={isSelected ? 'canvas-object canvas-object--selected' : 'canvas-object'}
               onPointerDown={(e) => handlePointerDown(e, obj)}
+              style={
+                obj.kind !== 'pixels' && obj.rotation !== 0
+                  ? {
+                      transform: `rotate(${obj.rotation}deg)`,
+                      transformOrigin: `${((effectiveObj.x + hitWidth / 2) * cell).toFixed(0)}px ${((effectiveObj.y + hitHeight / 2) * cell).toFixed(0)}px`,
+                    }
+                  : undefined
+              }
             >
               {/* Invisible hit target covering the object's full bounding box, not just
                   its filled pixels — a touch landing in the gap inside a heart's notch or

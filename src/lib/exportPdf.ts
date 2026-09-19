@@ -7,9 +7,10 @@ function hexToRgb(hex: string): [number, number, number] {
   return [parseInt(clean.slice(0, 2), 16), parseInt(clean.slice(2, 4), 16), parseInt(clean.slice(4, 6), 16)]
 }
 
-export function exportProjectToPdf(project: Project): void {
+export function exportProjectToPdf(project: Project, overrideTitle?: string): void {
   const cells = flattenProject(project)
   const colors = summarizeColors(cells)
+  const title = overrideTitle || project.name || 'Cross-Stitch Pattern'
 
   const orientation = project.widthStitches >= project.heightStitches ? 'landscape' : 'portrait'
   const doc = new jsPDF({ orientation, unit: 'mm', format: 'a4' })
@@ -35,7 +36,7 @@ export function exportProjectToPdf(project: Project): void {
   const gridX = margin
 
   doc.setFontSize(14)
-  doc.text(project.name || 'Cross-Stitch Pattern', margin, margin)
+  doc.text(title, margin, margin)
   doc.setFontSize(9)
   doc.setTextColor(120)
   const inchesWidth = (project.widthStitches / project.fabric.stitchesPerInch).toFixed(1)
@@ -79,6 +80,6 @@ export function exportProjectToPdf(project: Project): void {
     legendY += legendLineHeight
   }
 
-  const filename = `${(project.name || 'cross-stitch-pattern').trim().replace(/\s+/g, '-').toLowerCase()}.pdf`
+  const filename = `${title.trim().replace(/\s+/g, '-').toLowerCase()}.pdf`
   doc.save(filename)
 }

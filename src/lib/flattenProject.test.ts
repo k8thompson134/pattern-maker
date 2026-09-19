@@ -19,6 +19,7 @@ describe('flattenProject', () => {
       scale: 1,
       x: 10,
       y: 10,
+      rotation: 0,
       color: red,
     }
     project.objects = [text]
@@ -51,7 +52,7 @@ describe('flattenProject', () => {
 
   it('a later object in the array overwrites an earlier one at the same cell (z-order)', () => {
     const project = createEmptyProject('t')
-    const bottomIcon: IconObject = { id: '1', kind: 'icon', iconId: 'square', scale: 1, x: 0, y: 0, color: red }
+    const bottomIcon: IconObject = { id: '1', kind: 'icon', iconId: 'square', scale: 1, x: 0, y: 0, rotation: 0, color: red }
     const topPixel: PixelObject = {
       id: '2',
       kind: 'pixels',

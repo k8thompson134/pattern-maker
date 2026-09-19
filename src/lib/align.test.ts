@@ -11,7 +11,7 @@ const color = DMC_STARTER_COLORS[0]
 const rose = getIcon('rose')
 
 function makeIcon(x: number, y: number, scale = 1): IconObject {
-  return { id: '1', kind: 'icon', iconId: 'rose', scale, x, y, color }
+  return { id: '1', kind: 'icon', iconId: 'rose', scale, x, y, rotation: 0, color }
 }
 
 const CANVAS_W = 60

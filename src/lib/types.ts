@@ -17,6 +17,7 @@ export type TextObject = {
   scale: number
   x: number
   y: number
+  rotation: number
   color: StitchColor
 }
 
@@ -27,6 +28,7 @@ export type IconObject = {
   scale: number
   x: number
   y: number
+  rotation: number
   color: StitchColor
 }
 
