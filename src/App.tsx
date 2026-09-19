@@ -10,6 +10,7 @@ import { measureText } from './lib/textRender'
 import { ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas } from './lib/objectMeasure'
+import { createId } from './lib/id'
 import './App.css'
 
 const MIN_ZOOM = 0.25
@@ -49,7 +50,7 @@ function App() {
     const font = getFont(draftFontId)
     const { width, height } = measureText(draftText, font, 'horizontal', 1)
     const newObject: TextObject = {
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: 'text',
       content: draftText,
       font: draftFontId,
@@ -67,7 +68,7 @@ function App() {
     const icon = getIcon(draftIconId)
     const { width, height } = measureIcon(icon, 1)
     const newObject: IconObject = {
-      id: crypto.randomUUID(),
+      id: createId(),
       kind: 'icon',
       iconId: draftIconId,
       scale: 1,

@@ -1,3 +1,5 @@
+import { createId } from './id'
+
 export type StitchColor = {
   dmcCode: string
   name: string
@@ -54,7 +56,7 @@ export const DEFAULT_FABRIC: FabricCount = {
 
 export function createEmptyProject(name: string): Project {
   return {
-    id: crypto.randomUUID(),
+    id: createId(),
     name,
     widthStitches: 60,
     heightStitches: 60,
