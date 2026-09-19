@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { clampToCanvas, measureObject } from './objectMeasure'
+import { getIcon } from './icons'
 import type { IconObject, TextObject } from './types'
 import { DMC_STARTER_COLORS } from './dmcColors'
 
 const color = DMC_STARTER_COLORS[0]
+const heart = getIcon('heart')
 
 describe('measureObject', () => {
   it('measures a text object using its font, direction, and scale', () => {
@@ -31,7 +33,7 @@ describe('measureObject', () => {
       y: 0,
       color,
     }
-    expect(measureObject(icon)).toEqual({ width: 18, height: 16 })
+    expect(measureObject(icon)).toEqual({ width: heart.width * 2, height: heart.height * 2 })
   })
 })
 
@@ -42,11 +44,11 @@ describe('clampToCanvas', () => {
   })
 
   it('pulls an object back on-canvas after a scale-up pushes it past the edge', () => {
-    // heart is 9x8; centered near x=55 on a 60-wide canvas, then scaled 3x would run off the edge
+    // centered near x=55 on a 60-wide canvas, then scaled 3x would run off the edge
     const icon: IconObject = { id: '1', kind: 'icon', iconId: 'heart', scale: 1, x: 55, y: 55, color }
     const scaledUp = clampToCanvas({ ...icon, scale: 3 }, 60, 60)
-    expect(scaledUp.x).toBeLessThanOrEqual(60 - 9 * 3)
-    expect(scaledUp.y).toBeLessThanOrEqual(60 - 8 * 3)
+    expect(scaledUp.x).toBeLessThanOrEqual(60 - heart.width * 3)
+    expect(scaledUp.y).toBeLessThanOrEqual(60 - heart.height * 3)
   })
 
   it('never produces a negative position even if the object is larger than the canvas', () => {

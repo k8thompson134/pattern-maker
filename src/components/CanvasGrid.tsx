@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useState, useRef } from 'react'
 import type { CanvasObject } from '../lib/types'
 import { getFont } from '../lib/fonts'
 import { renderTextToCells, type FilledCell } from '../lib/textRender'
@@ -48,6 +48,12 @@ export function CanvasGrid({
     maxY: number
   } | null>(null)
 
+  // Live drag position lives here, not in the parent's saved project — committing
+  // every pixel of movement up to the parent triggers a localStorage write on every
+  // pointermove event, which is what was making dragging feel laggy. Only the final
+  // position gets committed (and saved) on pointer-up.
+  const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null)
+
   const lines: React.ReactNode[] = []
   for (let x = 0; x <= widthStitches; x++) {
     lines.push(
@@ -83,11 +89,16 @@ export function CanvasGrid({
     const deltaY = Math.round((e.clientY - drag.startPointerY) / cell)
     const nextX = Math.min(Math.max(0, drag.startObjX + deltaX), drag.maxX)
     const nextY = Math.min(Math.max(0, drag.startObjY + deltaY), drag.maxY)
-    onMove(drag.id, nextX, nextY)
+    setDragPreview({ id: drag.id, x: nextX, y: nextY })
   }
 
   function handlePointerUp() {
+    const drag = dragRef.current
+    if (drag && dragPreview) {
+      onMove(drag.id, dragPreview.x, dragPreview.y)
+    }
     dragRef.current = null
+    setDragPreview(null)
   }
 
   return (
@@ -111,6 +122,8 @@ export function CanvasGrid({
         {objects.map((obj) => {
           const cells = renderObjectCells(obj)
           const isSelected = obj.id === selectedId
+          const posX = obj.id === dragPreview?.id ? dragPreview.x : obj.x
+          const posY = obj.id === dragPreview?.id ? dragPreview.y : obj.y
           return (
             <g
               key={obj.id}
@@ -120,8 +133,8 @@ export function CanvasGrid({
               {cells.map((c, i) => (
                 <rect
                   key={i}
-                  x={(obj.x + c.dx) * cell}
-                  y={(obj.y + c.dy) * cell}
+                  x={(posX + c.dx) * cell}
+                  y={(posY + c.dy) * cell}
                   width={cell}
                   height={cell}
                   fill={obj.color.hex}

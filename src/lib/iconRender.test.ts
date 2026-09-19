@@ -31,6 +31,33 @@ describe('renderIconToCells', () => {
     const at3x = renderIconToCells(heart, 3)
     expect(at3x.length).toBe(at1x.length * 9)
   })
+
+  // Icons that are meant to be left-right mirror-symmetric by design. A lopsided
+  // row here reads as a stray extra bit sticking out on one side (the heart bitmap
+  // had exactly this bug: row 0 was '011001100', not a mirror of itself).
+  // moon/lightning/music-note/rose are intentionally asymmetric and excluded
+  // (rose's leaves deliberately alternate left/right rather than mirroring).
+  const SYMMETRIC_ICON_IDS = [
+    'heart',
+    'star',
+    'circle',
+    'diamond',
+    'cross',
+    'arrow-up',
+    'sun',
+    'paw',
+    'flower',
+    'square',
+    'triangle',
+    'fist',
+  ]
+
+  it.each(SYMMETRIC_ICON_IDS)('%s is left-right mirror-symmetric', (id) => {
+    const icon = getIcon(id)
+    for (const row of icon.rows) {
+      expect(row).toBe([...row].reverse().join(''))
+    }
+  })
 })
 
 describe('measureIcon', () => {
