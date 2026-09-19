@@ -45,6 +45,25 @@
   box-sizing: border-box;
 }
 
+.size-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.size-input-row label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.75rem;
+  color: #888;
+}
+
+.size-input-row input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .swatch-row {
   display: flex;
   flex-wrap: wrap;

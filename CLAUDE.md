@@ -10,16 +10,36 @@ existing market — see `docs/scope.md` for the full rationale and `docs/handoff
 for the original build plan). No backend — React + Vite, canvas state persisted to
 localStorage, PDF export planned via jsPDF (installed, not yet wired up).
 
-**Status as of 2026-09-19:** Phase 1 (canvas, text tool, drag/resize, DMC color
-picker, zoom) and Phase 2's icon library (16 icons) are done, plus several
-usability items added from live testing beyond the original plan: layer
-ordering (forward/backward/to-front/to-back), a freeform multi-color pixel
-drawing tool (paint/erase individual stitches, for small decorations text/icons
-can't cover), and per-object delete (now surfaced immediately at the top of the
-selected-object panel, not buried at the bottom). Mobile usability — the thing
-the user cared about most for v1 — is solid: responsive layout, tap-based D-pad
-+ size stepper as the reliable path, gesture drag/resize as a nice-to-have on
-top. PDF export (grid + symbol key + DMC list) is the main remaining Phase 2 item.
+**Status as of 2026-09-19:** All of Phase 1 and Phase 2 (per `docs/handoff.md`)
+are now done, plus several usability items added from live testing beyond the
+original plan: layer ordering (forward/backward/to-front/to-back), a freeform
+multi-color pixel drawing tool (paint/erase individual stitches, for small
+decorations text/icons can't cover), per-object delete (surfaced immediately at
+the top of the selected-object panel, not buried at the bottom), and editable
+canvas size (was hardcoded to 60x60 at project creation with no way to change
+it — existing objects re-clamp into bounds when the canvas shrinks). Mobile
+usability — the thing the user cared about most for v1 — is solid: responsive
+layout, tap-based D-pad + size stepper as the reliable path, gesture
+drag/resize as a nice-to-have on top.
+
+**PDF export** (`src/lib/exportPdf.ts`, jsPDF) fits the whole grid on one page
+(scaled to fit, not 1:1 physical size) with a title, dimensions, the colored
+stitch grid, and a DMC color/stitch-count legend below it — verified by
+rendering an actual exported PDF back to an image (`sips -s format png`) and
+visually confirming grid position and legend content, not just that a file got
+written. `src/lib/flattenProject.ts` (`flattenProject`/`summarizeColors`) is
+the shared pure logic backing it — collapses every object into one grid
+respecting z-order (later objects overwrite earlier ones at the same cell,
+matching what's visually on screen), independently unit-tested. If another
+export format is ever needed (PNG, SVG), start from `flattenProject`, not a
+fresh render pass — it's already the single source of truth for "what does
+this pattern actually look like flattened."
+
+v1 is now feature-complete against the original plan. Remaining ideas are
+already-identified stretch goals, not gaps: continuous drag-to-paint for the
+Draw tool (currently tap-one-cell-at-a-time), grouping (mentioned as a
+low-priority v1 placeholder in `docs/handoff.md`, never built), and the mobile
+gesture-reliability question in "Known Issues" below.
 
 ## Architecture
 
@@ -31,6 +51,8 @@ top. PDF export (grid + symbol key + DMC list) is the main remaining Phase 2 ite
 - `src/lib/align.ts` — six-direction alignment (left/center-h/right/top/center-v/bottom), routes through `clampToCanvas`
 - `src/lib/resizeHandle.ts` — pure corner-anchor resize math (`computeResizeFromHandle`), no DOM/React — kept pure specifically so the anchor-corner geometry (easy to get backwards) could be unit-tested exhaustively. Only used for text/icon — pixel drawings resize by adding/removing stitches, not a uniform NxN factor, so corner handles are hidden for them (`CanvasGrid.tsx` checks `.kind !== 'pixels'` before rendering handles).
 - `src/lib/id.ts` — `createId()`, a `crypto.randomUUID()` wrapper with a fallback (see Known Issues)
+- `src/lib/flattenProject.ts` — `flattenProject`/`summarizeColors`, collapses every object into one z-ordered grid of absolute stitches; shared source of truth for PDF export (and any future export format)
+- `src/lib/exportPdf.ts` — `exportProjectToPdf`, builds the printable chart (grid + DMC legend) via jsPDF and triggers a browser download
 - `src/components/CanvasGrid.tsx` — the SVG canvas: grid lines, object rendering (per-cell color for pixels, single `obj.color` for text/icon), drag, corner-drag resize, selection overlay, and a draw-mode overlay rect (topmost, only rendered while `drawMode` is on) that intercepts taps for paint/erase instead of normal select/drag. `CELL_SIZE` and `MAX_OBJECT_SCALE` are exported/imported as the single source of truth other files reference — don't hardcode either elsewhere.
 - `src/App.tsx` — toolbar (text/icon/draw tools, selected-object panel with layer/direction/size/position/color/align controls + delete), palette panel (flattens per-object color, or per-cell colors for pixel drawings), keyboard nudge handling, draw-session state (`activePixelObjectId` — which pixel object new paint/erase strokes target; cleared when draw mode toggles off so the next session starts a fresh drawing)
 

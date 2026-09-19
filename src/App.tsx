@@ -13,6 +13,7 @@ import { clampToCanvas, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
+import { exportProjectToPdf } from './lib/exportPdf'
 import './App.css'
 
 const MIN_ZOOM = 0.2
@@ -269,6 +270,25 @@ function App() {
     setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
   }
 
+  function setCanvasSize(widthStitches: number, heightStitches: number) {
+    const w = Math.max(1, Math.min(500, Math.round(widthStitches) || 1))
+    const h = Math.max(1, Math.min(500, Math.round(heightStitches) || 1))
+    setProject((p) => ({
+      ...p,
+      widthStitches: w,
+      heightStitches: h,
+      // shrinking the canvas can leave existing objects hanging off the new edge —
+      // pull them back in bounds rather than letting them silently clip/overflow
+      objects: p.objects.map((o) => clampToCanvas(o, w, h)),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  function setStitchesPerInch(stitchesPerInch: number) {
+    const spi = Math.max(1, Math.min(30, Math.round(stitchesPerInch) || 1))
+    setProject((p) => ({ ...p, fabric: { ...p.fabric, stitchesPerInch: spi } }))
+  }
+
   const paletteColors = [
     ...new Map(
       project.objects.flatMap((o) => (o.kind === 'pixels' ? o.cells.map((c) => c.color) : [o.color])).map((c) => [c.dmcCode, c]),
@@ -279,9 +299,48 @@ function App() {
     <div className="app-shell">
       <aside className="toolbar">
         <h2>Tools</h2>
-        <button type="button" onClick={() => setProject(createEmptyProject('Untitled'))}>
-          New project
-        </button>
+        <div className="button-row">
+          <button type="button" onClick={() => setProject(createEmptyProject('Untitled'))}>
+            New project
+          </button>
+          <button type="button" onClick={() => exportProjectToPdf(project)}>
+            Export PDF
+          </button>
+        </div>
+
+        <div className="tool-section">
+          <h3>Canvas Size</h3>
+          <div className="size-input-row">
+            <label>
+              W
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={project.widthStitches}
+                onChange={(e) => setCanvasSize(Number(e.target.value), project.heightStitches)}
+              />
+            </label>
+            <label>
+              H
+              <input
+                type="number"
+                min={1}
+                max={500}
+                value={project.heightStitches}
+                onChange={(e) => setCanvasSize(project.widthStitches, Number(e.target.value))}
+              />
+            </label>
+          </div>
+          <label className="field-label">Fabric count (stitches/inch)</label>
+          <input
+            type="number"
+            min={1}
+            max={30}
+            value={project.fabric.stitchesPerInch}
+            onChange={(e) => setStitchesPerInch(Number(e.target.value))}
+          />
+        </div>
 
         <div className="tool-section">
           <h3>Text</h3>
