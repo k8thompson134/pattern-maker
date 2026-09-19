@@ -188,9 +188,11 @@
 .canvas-grid__lines line {
   stroke: #ddd;
   stroke-width: 1;
+  pointer-events: none;
 }
 
-.canvas-object {
+.canvas-object,
+.canvas-object rect {
   touch-action: none;
 }
 

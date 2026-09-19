@@ -19,7 +19,7 @@ type CanvasGridProps = {
 }
 
 export const CELL_SIZE = 16
-const HANDLE_SIZE = 14
+const HANDLE_SIZE = 24
 
 function renderObjectCells(obj: CanvasObject): FilledCell[] {
   if (obj.kind === 'text') {
@@ -86,6 +86,7 @@ export function CanvasGrid({
 
   function handlePointerDown(e: React.PointerEvent, obj: CanvasObject) {
     e.stopPropagation()
+    e.preventDefault()
     onSelect(obj.id)
     const { width, height } = measureObject(obj)
     dragRef.current = {
@@ -102,6 +103,7 @@ export function CanvasGrid({
 
   function handlePointerMove(e: React.PointerEvent) {
     if (resizeRef.current) {
+      e.preventDefault()
       const resize = resizeRef.current
       const svgRect = svgRef.current?.getBoundingClientRect()
       if (!svgRect) return
@@ -121,6 +123,7 @@ export function CanvasGrid({
 
     const drag = dragRef.current
     if (!drag) return
+    e.preventDefault()
     const deltaX = Math.round((e.clientX - drag.startPointerX) / cell)
     const deltaY = Math.round((e.clientY - drag.startPointerY) / cell)
     const nextX = Math.min(Math.max(0, drag.startObjX + deltaX), drag.maxX)
@@ -145,6 +148,7 @@ export function CanvasGrid({
 
   function handleResizePointerDown(e: React.PointerEvent, obj: CanvasObject, handle: CornerHandle) {
     e.stopPropagation()
+    e.preventDefault()
     onSelect(obj.id)
     const { width, height } = measureObject(obj)
     const { width: baseWidth, height: baseHeight } = measureObject({ ...obj, scale: 1 })
@@ -186,12 +190,24 @@ export function CanvasGrid({
                 : obj
           const cells = renderObjectCells(effectiveObj)
           const isSelected = obj.id === selectedId
+          const { width: hitWidth, height: hitHeight } = measureObject(effectiveObj)
           return (
             <g
               key={obj.id}
               className={isSelected ? 'canvas-object canvas-object--selected' : 'canvas-object'}
               onPointerDown={(e) => handlePointerDown(e, obj)}
             >
+              {/* Invisible hit target covering the object's full bounding box, not just
+                  its filled pixels — a touch landing in the gap inside a heart's notch or
+                  a crescent moon's curve would otherwise miss every rect here, fall through
+                  to the canvas background, and the browser would scroll instead of drag. */}
+              <rect
+                x={effectiveObj.x * cell}
+                y={effectiveObj.y * cell}
+                width={hitWidth * cell}
+                height={hitHeight * cell}
+                fill="transparent"
+              />
               {cells.map((c, i) => (
                 <rect
                   key={i}
