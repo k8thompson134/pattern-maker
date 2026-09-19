@@ -4,7 +4,12 @@ import { measureText } from './textRender'
 import { getIcon } from './icons'
 import { measureIcon } from './iconRender'
 
-export const MAX_OBJECT_SCALE = 3
+// Scale must stay a whole integer — each glyph/icon pixel becomes an NxN block of
+// stitches, and a fractional scale would put half-stitches on the grid, which isn't
+// a real thing in cross-stitch. So "finer control" means more integer steps, not
+// fractional ones. 6 gives noticeably smoother-feeling growth than the original 3
+// (see CLAUDE.md's "Known issues" section for the mobile corner-drag context).
+export const MAX_OBJECT_SCALE = 6
 
 export function measureObject(obj: CanvasObject): { width: number; height: number } {
   if (obj.kind === 'text') {
