@@ -16,7 +16,7 @@ type CanvasGridProps = {
   onMove: (id: string, x: number, y: number) => void
 }
 
-const CELL_SIZE = 16
+export const CELL_SIZE = 16
 
 function renderObjectCells(obj: CanvasObject): FilledCell[] {
   if (obj.kind === 'text') {

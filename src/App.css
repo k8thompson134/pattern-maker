@@ -189,3 +189,63 @@
   stroke: #ddd;
   stroke-width: 1;
 }
+
+.canvas-object {
+  touch-action: none;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .canvas-area {
+    order: 1;
+  }
+
+  .toolbar {
+    order: 2;
+  }
+
+  .palette-panel {
+    order: 3;
+  }
+
+  .toolbar,
+  .palette-panel {
+    max-height: 34vh;
+    border-right: none;
+    border-left: none;
+    border-top: 1px solid #333;
+  }
+
+  .canvas-scroll {
+    height: 60vh;
+    padding: 12px;
+  }
+
+  .tool-section input,
+  .tool-section select {
+    font-size: 16px;
+  }
+
+  .swatch {
+    width: 32px;
+    height: 32px;
+  }
+
+  .icon-thumb-btn {
+    padding: 8px;
+  }
+
+  .toggle-btn,
+  .zoom-controls button,
+  .tool-section button,
+  .toolbar > button,
+  .danger-btn {
+    min-height: 40px;
+  }
+}

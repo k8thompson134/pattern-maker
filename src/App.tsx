@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { CanvasGrid } from './components/CanvasGrid'
+import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { IconThumb } from './components/IconThumb'
 import { createEmptyProject, type IconObject, type TextDirection, type TextObject } from './lib/types'
@@ -12,7 +12,7 @@ import { measureIcon } from './lib/iconRender'
 import { clampToCanvas } from './lib/objectMeasure'
 import './App.css'
 
-const MIN_ZOOM = 0.5
+const MIN_ZOOM = 0.25
 const MAX_ZOOM = 2.5
 
 function App() {
@@ -27,6 +27,18 @@ function App() {
   useEffect(() => {
     saveProject(project)
   }, [project])
+
+  useEffect(() => {
+    const availableWidth = window.innerWidth - 24
+    const fullWidthPx = project.widthStitches * CELL_SIZE
+    const fitZoom = Math.round((Math.min(1, availableWidth / fullWidthPx) * 20)) / 20
+    if (fitZoom < project.zoom) {
+      setProject((p) => ({ ...p, zoom: Math.max(MIN_ZOOM, fitZoom) }))
+    }
+    // run once on initial load only — a narrow screen should start zoomed to fit,
+    // but shouldn't fight the user's own zoom choice on every resize afterward
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const inchesWidth = (project.widthStitches / project.fabric.stitchesPerInch).toFixed(1)
   const inchesHeight = (project.heightStitches / project.fabric.stitchesPerInch).toFixed(1)
