@@ -15,7 +15,13 @@ export function measureObject(obj: CanvasObject): { width: number; height: numbe
   if (obj.kind === 'text') {
     return measureText(obj.content, getFont(obj.font), obj.direction, obj.scale)
   }
-  return measureIcon(getIcon(obj.iconId), obj.scale)
+  if (obj.kind === 'icon') {
+    return measureIcon(getIcon(obj.iconId), obj.scale)
+  }
+  if (obj.cells.length === 0) return { width: 0, height: 0 }
+  const maxDx = Math.max(...obj.cells.map((c) => c.dx))
+  const maxDy = Math.max(...obj.cells.map((c) => c.dy))
+  return { width: maxDx + 1, height: maxDy + 1 }
 }
 
 export function clampToCanvas<T extends CanvasObject>(

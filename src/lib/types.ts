@@ -30,7 +30,17 @@ export type IconObject = {
   color: StitchColor
 }
 
-export type CanvasObject = TextObject | IconObject
+export type PixelCell = { dx: number; dy: number; color: StitchColor }
+
+export type PixelObject = {
+  id: string
+  kind: 'pixels'
+  x: number
+  y: number
+  cells: PixelCell[]
+}
+
+export type CanvasObject = TextObject | IconObject | PixelObject
 
 export type FabricCount = {
   count: number

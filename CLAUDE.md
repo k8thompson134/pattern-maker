@@ -10,24 +10,29 @@ existing market — see `docs/scope.md` for the full rationale and `docs/handoff
 for the original build plan). No backend — React + Vite, canvas state persisted to
 localStorage, PDF export planned via jsPDF (installed, not yet wired up).
 
-**Status as of 2026-09-18:** Phase 1 (canvas, text tool, drag/resize, DMC color
-picker, zoom) and most of Phase 2 (16-icon library) are done. Mobile usability —
-the thing the user cared about most for v1 — is now solid: responsive layout,
-tap-based D-pad + size stepper as the reliable path, gesture drag/resize as a
-nice-to-have on top. PDF export (grid + symbol key + DMC list) is the main
-remaining Phase 2 item.
+**Status as of 2026-09-19:** Phase 1 (canvas, text tool, drag/resize, DMC color
+picker, zoom) and Phase 2's icon library (16 icons) are done, plus several
+usability items added from live testing beyond the original plan: layer
+ordering (forward/backward/to-front/to-back), a freeform multi-color pixel
+drawing tool (paint/erase individual stitches, for small decorations text/icons
+can't cover), and per-object delete (now surfaced immediately at the top of the
+selected-object panel, not buried at the bottom). Mobile usability — the thing
+the user cared about most for v1 — is solid: responsive layout, tap-based D-pad
++ size stepper as the reliable path, gesture drag/resize as a nice-to-have on
+top. PDF export (grid + symbol key + DMC list) is the main remaining Phase 2 item.
 
 ## Architecture
 
-- `src/lib/types.ts` — `Project`/`CanvasObject` (`TextObject` | `IconObject`) data model
+- `src/lib/types.ts` — `Project`/`CanvasObject` (`TextObject` | `IconObject` | `PixelObject`) data model. `PixelObject` is the odd one out — no `scale`, no single `color` (each cell carries its own `StitchColor`) — see the guards for `selectedObject.kind !== 'pixels'` in `App.tsx` before assuming every object has `.scale`/`.color`.
 - `src/lib/fonts.ts`, `src/lib/textRender.ts` — bitmap fonts (Block 5x7, Tiny 3x5) and text→stitch-cell rendering
 - `src/lib/icons.ts`, `src/lib/iconRender.ts` — the 16-icon curated library and icon→stitch-cell rendering
-- `src/lib/objectMeasure.ts` — `measureObject`/`clampToCanvas`, `MAX_OBJECT_SCALE`; the one place both text and icon sizing logic converge
+- `src/lib/pixelObject.ts` — `paintCell`/`eraseCell` for freeform drawings. Always rebases `x`/`y` to the true top-left and every cell's `dx`/`dy` to `>= 0` after every edit, so `PixelObject` satisfies the same "`x`/`y` is the left/top edge" invariant `TextObject`/`IconObject` get for free — this is what lets `measureObject`/`clampToCanvas`/`align` work on pixel drawings with no special-casing.
+- `src/lib/objectMeasure.ts` — `measureObject`/`clampToCanvas`, `MAX_OBJECT_SCALE`; the one place text/icon/pixels sizing logic converges
 - `src/lib/align.ts` — six-direction alignment (left/center-h/right/top/center-v/bottom), routes through `clampToCanvas`
-- `src/lib/resizeHandle.ts` — pure corner-anchor resize math (`computeResizeFromHandle`), no DOM/React — kept pure specifically so the anchor-corner geometry (easy to get backwards) could be unit-tested exhaustively
+- `src/lib/resizeHandle.ts` — pure corner-anchor resize math (`computeResizeFromHandle`), no DOM/React — kept pure specifically so the anchor-corner geometry (easy to get backwards) could be unit-tested exhaustively. Only used for text/icon — pixel drawings resize by adding/removing stitches, not a uniform NxN factor, so corner handles are hidden for them (`CanvasGrid.tsx` checks `.kind !== 'pixels'` before rendering handles).
 - `src/lib/id.ts` — `createId()`, a `crypto.randomUUID()` wrapper with a fallback (see Known Issues)
-- `src/components/CanvasGrid.tsx` — the SVG canvas: grid lines, object rendering, drag, corner-drag resize, selection overlay. `CELL_SIZE` and `MAX_OBJECT_SCALE` are exported/imported as the single source of truth other files reference — don't hardcode either elsewhere.
-- `src/App.tsx` — toolbar (text/icon tools, selected-object panel with direction/size/position/color/align controls), palette panel, keyboard nudge handling
+- `src/components/CanvasGrid.tsx` — the SVG canvas: grid lines, object rendering (per-cell color for pixels, single `obj.color` for text/icon), drag, corner-drag resize, selection overlay, and a draw-mode overlay rect (topmost, only rendered while `drawMode` is on) that intercepts taps for paint/erase instead of normal select/drag. `CELL_SIZE` and `MAX_OBJECT_SCALE` are exported/imported as the single source of truth other files reference — don't hardcode either elsewhere.
+- `src/App.tsx` — toolbar (text/icon/draw tools, selected-object panel with layer/direction/size/position/color/align controls + delete), palette panel (flattens per-object color, or per-cell colors for pixel drawings), keyboard nudge handling, draw-session state (`activePixelObjectId` — which pixel object new paint/erase strokes target; cleared when draw mode toggles off so the next session starts a fresh drawing)
 
 ## Known Issues / Troubleshooting
 
@@ -107,6 +112,19 @@ coarse, the next lever is the same one — raise the constant further — not a
 fractional-scale redesign.
 
 ## Testing Conventions
+
+**`npx tsc --noEmit` is a silent no-op in this repo — do not trust it.** The
+root `tsconfig.json` is a solution-style file (`"files": []`, only
+`references` to `tsconfig.app.json`/`tsconfig.node.json`); running plain
+`tsc --noEmit` against it checks nothing and exits 0 regardless of what's
+broken. This went unnoticed for most of a session (2026-09-19) — real type
+errors (a new `PixelObject` union member missing fields other code assumed
+existed) were sitting uncaught while `npx tsc --noEmit` kept reporting clean.
+**Always use `npx tsc -b --force` (build mode) for a standalone type-check, or
+just run `npm run build`**, which correctly invokes `tsc -b` first. If you ever
+need to double check whether a "clean" type-check is real, force a deliberate
+error (e.g. `const _x: string = someRealValue`) and confirm it's actually
+reported — a silently-accepted deliberate error means you're checking nothing.
 
 Real unit tests exist (`npm run test`, vitest) for pure logic — bitmap
 rendering, resize/align geometry, id generation, canvas clamping. Run before

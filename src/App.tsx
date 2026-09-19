@@ -12,6 +12,7 @@ import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
+import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import './App.css'
 
 const MIN_ZOOM = 0.2
@@ -25,6 +26,10 @@ function App() {
   const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [drawMode, setDrawMode] = useState(false)
+  const [drawErase, setDrawErase] = useState(false)
+  const [drawColor, setDrawColor] = useState(DMC_STARTER_COLORS[0])
+  const [activePixelObjectId, setActivePixelObjectId] = useState<string | null>(null)
 
   useEffect(() => {
     saveProject(project)
@@ -130,7 +135,7 @@ function App() {
   function resizeObject(id: string, patch: { scale: number; x: number; y: number }) {
     setProject((p) => ({
       ...p,
-      objects: p.objects.map((o) => (o.id === id ? { ...o, ...patch } : o)),
+      objects: p.objects.map((o) => (o.id === id && o.kind !== 'pixels' ? { ...o, ...patch } : o)),
       updatedAt: new Date().toISOString(),
     }))
   }
@@ -153,7 +158,7 @@ function App() {
     const clampedScale = Math.min(MAX_OBJECT_SCALE, Math.max(1, scale))
     if (selectedObject.kind === 'text') {
       updateTextObject({ scale: clampedScale })
-    } else {
+    } else if (selectedObject.kind === 'icon') {
       updateIconObject({ scale: clampedScale })
     }
   }
@@ -167,6 +172,63 @@ function App() {
       ),
       updatedAt: new Date().toISOString(),
     }))
+  }
+
+  function reorderSelectedObject(kind: 'forward' | 'backward' | 'front' | 'back') {
+    if (!selectedObject) return
+    const id = selectedObject.id
+    setProject((p) => {
+      const idx = p.objects.findIndex((o) => o.id === id)
+      if (idx === -1) return p
+      const objects = [...p.objects]
+      if (kind === 'forward' && idx < objects.length - 1) {
+        ;[objects[idx], objects[idx + 1]] = [objects[idx + 1], objects[idx]]
+      } else if (kind === 'backward' && idx > 0) {
+        ;[objects[idx], objects[idx - 1]] = [objects[idx - 1], objects[idx]]
+      } else if (kind === 'front' && idx < objects.length - 1) {
+        const [obj] = objects.splice(idx, 1)
+        objects.push(obj)
+      } else if (kind === 'back' && idx > 0) {
+        const [obj] = objects.splice(idx, 1)
+        objects.unshift(obj)
+      } else {
+        return p
+      }
+      return { ...p, objects, updatedAt: new Date().toISOString() }
+    })
+  }
+
+  function paintPixel(gx: number, gy: number) {
+    const target = activePixelObjectId ? project.objects.find((o) => o.id === activePixelObjectId) : null
+    if (target && target.kind === 'pixels') {
+      const targetId = target.id
+      setProject((p) => ({
+        ...p,
+        objects: p.objects.map((o) => (o.id === targetId && o.kind === 'pixels' ? paintCell(o, gx, gy, drawColor) : o)),
+        updatedAt: new Date().toISOString(),
+      }))
+      return
+    }
+    const newObject = paintCell(createEmptyPixelObject(), gx, gy, drawColor)
+    setActivePixelObjectId(newObject.id)
+    setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
+  }
+
+  function erasePixel(gx: number, gy: number) {
+    if (!activePixelObjectId) return
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) => (o.id === activePixelObjectId && o.kind === 'pixels' ? eraseCell(o, gx, gy) : o)),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  function toggleDrawMode() {
+    setDrawMode((wasOn) => {
+      if (wasOn) setActivePixelObjectId(null)
+      return !wasOn
+    })
+    setSelectedId(null)
   }
 
   useEffect(() => {
@@ -206,6 +268,12 @@ function App() {
   function setZoom(zoom: number) {
     setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
   }
+
+  const paletteColors = [
+    ...new Map(
+      project.objects.flatMap((o) => (o.kind === 'pixels' ? o.cells.map((c) => c.color) : [o.color])).map((c) => [c.dmcCode, c]),
+    ).values(),
+  ]
 
   return (
     <div className="app-shell">
@@ -257,12 +325,70 @@ function App() {
           </button>
         </div>
 
+        <div className="tool-section">
+          <h3>Draw</h3>
+          <div className="button-row">
+            <button
+              type="button"
+              className={`toggle-btn${!drawErase ? ' toggle-btn--active' : ''}`}
+              onClick={() => setDrawErase(false)}
+            >
+              Paint
+            </button>
+            <button
+              type="button"
+              className={`toggle-btn${drawErase ? ' toggle-btn--active' : ''}`}
+              onClick={() => setDrawErase(true)}
+            >
+              Erase
+            </button>
+          </div>
+          {!drawErase && <ColorSwatchPicker selected={drawColor} onSelect={setDrawColor} />}
+          <button
+            type="button"
+            className={drawMode ? 'toggle-btn--active' : ''}
+            onClick={toggleDrawMode}
+          >
+            {drawMode ? 'Done drawing' : 'Start drawing'}
+          </button>
+          {drawMode && (
+            <p className="tool-placeholder">Tap cells on the canvas to {drawErase ? 'erase' : 'paint'}.</p>
+          )}
+        </div>
+
         {selectedObject && (
           <div className="tool-section selected-panel">
-            <h3>Selected {selectedObject.kind}</h3>
+            <div className="selected-panel__header">
+              <h3>Selected {selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
+              <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
+                Delete
+              </button>
+            </div>
             <p className="selected-panel__label">
-              {selectedObject.kind === 'text' ? `"${selectedObject.content}"` : getIcon(selectedObject.iconId).name}
+              {selectedObject.kind === 'text'
+                ? `"${selectedObject.content}"`
+                : selectedObject.kind === 'icon'
+                  ? getIcon(selectedObject.iconId).name
+                  : `${selectedObject.cells.length}-stitch drawing`}
             </p>
+
+            <label className="field-label">Layer</label>
+            <div className="button-row">
+              <button type="button" onClick={() => reorderSelectedObject('backward')}>
+                Backward
+              </button>
+              <button type="button" onClick={() => reorderSelectedObject('forward')}>
+                Forward
+              </button>
+            </div>
+            <div className="button-row">
+              <button type="button" onClick={() => reorderSelectedObject('back')}>
+                To Back
+              </button>
+              <button type="button" onClick={() => reorderSelectedObject('front')}>
+                To Front
+              </button>
+            </div>
 
             {selectedObject.kind === 'text' && (
               <>
@@ -282,26 +408,30 @@ function App() {
               </>
             )}
 
-            <label className="field-label">Size</label>
-            <div className="stepper-row">
-              <button
-                type="button"
-                className="stepper-btn"
-                disabled={selectedObject.scale <= 1}
-                onClick={() => setSelectedScale(selectedObject.scale - 1)}
-              >
-                −
-              </button>
-              <span className="stepper-value">{selectedObject.scale}×</span>
-              <button
-                type="button"
-                className="stepper-btn"
-                disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
-                onClick={() => setSelectedScale(selectedObject.scale + 1)}
-              >
-                +
-              </button>
-            </div>
+            {selectedObject.kind !== 'pixels' && (
+              <>
+                <label className="field-label">Size</label>
+                <div className="stepper-row">
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    disabled={selectedObject.scale <= 1}
+                    onClick={() => setSelectedScale(selectedObject.scale - 1)}
+                  >
+                    −
+                  </button>
+                  <span className="stepper-value">{selectedObject.scale}×</span>
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
+                    onClick={() => setSelectedScale(selectedObject.scale + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </>
+            )}
 
             <label className="field-label">Position</label>
             <div className="dpad">
@@ -324,13 +454,17 @@ function App() {
               <span />
             </div>
 
-            <label className="field-label">Color</label>
-            <ColorSwatchPicker
-              selected={selectedObject.color}
-              onSelect={(c) =>
-                selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
-              }
-            />
+            {selectedObject.kind !== 'pixels' && (
+              <>
+                <label className="field-label">Color</label>
+                <ColorSwatchPicker
+                  selected={selectedObject.color}
+                  onSelect={(c) =>
+                    selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
+                  }
+                />
+              </>
+            )}
 
             <label className="field-label">Align</label>
             <div className="button-row">
@@ -355,10 +489,6 @@ function App() {
                 Bottom
               </button>
             </div>
-
-            <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
-              Delete
-            </button>
           </div>
         )}
       </aside>
@@ -389,17 +519,21 @@ function App() {
             onSelect={setSelectedId}
             onMove={moveObject}
             onResize={resizeObject}
+            drawMode={drawMode}
+            drawErase={drawErase}
+            onPaintCell={paintPixel}
+            onEraseCell={erasePixel}
           />
         </div>
       </main>
 
       <aside className="palette-panel">
         <h2>Palette</h2>
-        {project.objects.length === 0 ? (
+        {paletteColors.length === 0 ? (
           <p className="tool-placeholder">DMC colors used in this design will list here.</p>
         ) : (
           <ul className="palette-list">
-            {[...new Map(project.objects.map((o) => [o.color.dmcCode, o.color])).values()].map((c) => (
+            {paletteColors.map((c) => (
               <li key={c.dmcCode}>
                 <span className="swatch" style={{ backgroundColor: c.hex }} />
                 DMC {c.dmcCode} · {c.name}

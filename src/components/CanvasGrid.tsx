@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { CanvasObject } from '../lib/types'
+import type { CanvasObject, IconObject, TextObject } from '../lib/types'
 import { getFont } from '../lib/fonts'
 import { renderTextToCells, type FilledCell } from '../lib/textRender'
 import { getIcon } from '../lib/icons'
@@ -16,12 +16,16 @@ type CanvasGridProps = {
   onSelect: (id: string | null) => void
   onMove: (id: string, x: number, y: number) => void
   onResize: (id: string, patch: { scale: number; x: number; y: number }) => void
+  drawMode: boolean
+  drawErase: boolean
+  onPaintCell: (gx: number, gy: number) => void
+  onEraseCell: (gx: number, gy: number) => void
 }
 
 export const CELL_SIZE = 16
 const HANDLE_SIZE = 24
 
-function renderObjectCells(obj: CanvasObject): FilledCell[] {
+function renderObjectCells(obj: TextObject | IconObject): FilledCell[] {
   if (obj.kind === 'text') {
     return renderTextToCells(obj.content, getFont(obj.font), obj.direction, obj.scale)
   }
@@ -39,6 +43,10 @@ export function CanvasGrid({
   onSelect,
   onMove,
   onResize,
+  drawMode,
+  drawErase,
+  onPaintCell,
+  onEraseCell,
 }: CanvasGridProps) {
   const cell = CELL_SIZE * zoom
   const pixelWidth = widthStitches * cell
@@ -146,7 +154,7 @@ export function CanvasGrid({
     setDragPreview(null)
   }
 
-  function handleResizePointerDown(e: React.PointerEvent, obj: CanvasObject, handle: CornerHandle) {
+  function handleResizePointerDown(e: React.PointerEvent, obj: TextObject | IconObject, handle: CornerHandle) {
     e.stopPropagation()
     e.preventDefault()
     onSelect(obj.id)
@@ -160,6 +168,19 @@ export function CanvasGrid({
 
     resizeRef.current = { id: obj.id, handle, anchorXStitch, anchorYStitch, baseWidth, baseHeight }
     ;(e.target as Element).setPointerCapture(e.pointerId)
+  }
+
+  function handleDrawPointerDown(e: React.PointerEvent) {
+    e.preventDefault()
+    const svgRect = svgRef.current?.getBoundingClientRect()
+    if (!svgRect) return
+    const gx = Math.floor((e.clientX - svgRect.left) / cell)
+    const gy = Math.floor((e.clientY - svgRect.top) / cell)
+    if (drawErase) {
+      onEraseCell(gx, gy)
+    } else {
+      onPaintCell(gx, gy)
+    }
   }
 
   return (
@@ -183,12 +204,11 @@ export function CanvasGrid({
       <g className="canvas-grid__objects">
         {objects.map((obj) => {
           const effectiveObj =
-            obj.id === resizePreview?.id
+            obj.id === resizePreview?.id && obj.kind !== 'pixels'
               ? { ...obj, scale: resizePreview.scale, x: resizePreview.x, y: resizePreview.y }
               : obj.id === dragPreview?.id
                 ? { ...obj, x: dragPreview.x, y: dragPreview.y }
                 : obj
-          const cells = renderObjectCells(effectiveObj)
           const isSelected = obj.id === selectedId
           const { width: hitWidth, height: hitHeight } = measureObject(effectiveObj)
           return (
@@ -208,18 +228,31 @@ export function CanvasGrid({
                 height={hitHeight * cell}
                 fill="transparent"
               />
-              {cells.map((c, i) => (
-                <rect
-                  key={i}
-                  x={(effectiveObj.x + c.dx) * cell}
-                  y={(effectiveObj.y + c.dy) * cell}
-                  width={cell}
-                  height={cell}
-                  fill={obj.color.hex}
-                  stroke={isSelected ? '#646cff' : undefined}
-                  strokeWidth={isSelected ? 1 : undefined}
-                />
-              ))}
+              {effectiveObj.kind === 'pixels'
+                ? effectiveObj.cells.map((c, i) => (
+                    <rect
+                      key={i}
+                      x={(effectiveObj.x + c.dx) * cell}
+                      y={(effectiveObj.y + c.dy) * cell}
+                      width={cell}
+                      height={cell}
+                      fill={c.color.hex}
+                      stroke={isSelected ? '#646cff' : undefined}
+                      strokeWidth={isSelected ? 1 : undefined}
+                    />
+                  ))
+                : renderObjectCells(effectiveObj).map((c, i) => (
+                    <rect
+                      key={i}
+                      x={(effectiveObj.x + c.dx) * cell}
+                      y={(effectiveObj.y + c.dy) * cell}
+                      width={cell}
+                      height={cell}
+                      fill={effectiveObj.color.hex}
+                      stroke={isSelected ? '#646cff' : undefined}
+                      strokeWidth={isSelected ? 1 : undefined}
+                    />
+                  ))}
             </g>
           )
         })}
@@ -229,7 +262,7 @@ export function CanvasGrid({
         const selected = objects.find((o) => o.id === selectedId)
         if (!selected) return null
         const effectiveObj =
-          selected.id === resizePreview?.id
+          selected.id === resizePreview?.id && selected.kind !== 'pixels'
             ? { ...selected, scale: resizePreview.scale, x: resizePreview.x, y: resizePreview.y }
             : selected.id === dragPreview?.id
               ? { ...selected, x: dragPreview.x, y: dragPreview.y }
@@ -258,20 +291,34 @@ export function CanvasGrid({
               strokeDasharray="4 3"
               pointerEvents="none"
             />
-            {CORNER_HANDLES.map((handle) => (
-              <rect
-                key={handle}
-                x={corners[handle].cx - HANDLE_SIZE / 2}
-                y={corners[handle].cy - HANDLE_SIZE / 2}
-                width={HANDLE_SIZE}
-                height={HANDLE_SIZE}
-                className={`resize-handle resize-handle--${handle}`}
-                onPointerDown={(e) => handleResizePointerDown(e, selected, handle)}
-              />
-            ))}
+            {/* Pixel drawings scale by adding/removing individual stitches, not by a
+                uniform NxN block factor, so corner-drag resize doesn't apply to them. */}
+            {effectiveObj.kind !== 'pixels' &&
+              CORNER_HANDLES.map((handle) => (
+                <rect
+                  key={handle}
+                  x={corners[handle].cx - HANDLE_SIZE / 2}
+                  y={corners[handle].cy - HANDLE_SIZE / 2}
+                  width={HANDLE_SIZE}
+                  height={HANDLE_SIZE}
+                  className={`resize-handle resize-handle--${handle}`}
+                  onPointerDown={(e) => handleResizePointerDown(e, effectiveObj, handle)}
+                />
+              ))}
           </g>
         )
       })()}
+      {drawMode && (
+        <rect
+          x={0}
+          y={0}
+          width={pixelWidth}
+          height={pixelHeight}
+          fill="transparent"
+          className="draw-overlay"
+          onPointerDown={handleDrawPointerDown}
+        />
+      )}
     </svg>
   )
 }

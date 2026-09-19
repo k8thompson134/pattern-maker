@@ -91,6 +91,22 @@
   padding-top: 16px;
 }
 
+.selected-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.selected-panel__header h3 {
+  margin: 0;
+}
+
+.selected-panel__header .danger-btn {
+  margin-top: 0;
+  flex-shrink: 0;
+}
+
 .selected-panel__label {
   font-size: 0.85rem;
   color: #aaa;
@@ -253,6 +269,11 @@
   stroke-width: 2;
   touch-action: none;
   cursor: pointer;
+}
+
+.draw-overlay {
+  touch-action: none;
+  cursor: crosshair;
 }
 
 .resize-handle--nw,

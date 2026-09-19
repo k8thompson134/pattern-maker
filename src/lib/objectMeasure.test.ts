@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { clampToCanvas, measureObject } from './objectMeasure'
 import { getIcon } from './icons'
-import type { IconObject, TextObject } from './types'
+import type { IconObject, PixelObject, TextObject } from './types'
 import { DMC_STARTER_COLORS } from './dmcColors'
 
 const color = DMC_STARTER_COLORS[0]
@@ -34,6 +34,25 @@ describe('measureObject', () => {
       color,
     }
     expect(measureObject(icon)).toEqual({ width: heart.width * 2, height: heart.height * 2 })
+  })
+
+  it('measures a pixels object as the bounding box of its cells', () => {
+    const pixels: PixelObject = {
+      id: '1',
+      kind: 'pixels',
+      x: 3,
+      y: 4,
+      cells: [
+        { dx: 0, dy: 0, color },
+        { dx: 2, dy: 1, color },
+      ],
+    }
+    expect(measureObject(pixels)).toEqual({ width: 3, height: 2 })
+  })
+
+  it('measures an empty pixels object as zero-size', () => {
+    const pixels: PixelObject = { id: '1', kind: 'pixels', x: 0, y: 0, cells: [] }
+    expect(measureObject(pixels)).toEqual({ width: 0, height: 0 })
   })
 })
 
