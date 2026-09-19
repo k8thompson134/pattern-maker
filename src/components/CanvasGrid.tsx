@@ -1,7 +1,10 @@
 import { useRef } from 'react'
 import type { CanvasObject } from '../lib/types'
 import { getFont } from '../lib/fonts'
-import { measureText, renderTextToCells } from '../lib/textRender'
+import { renderTextToCells, type FilledCell } from '../lib/textRender'
+import { getIcon } from '../lib/icons'
+import { renderIconToCells } from '../lib/iconRender'
+import { measureObject } from '../lib/objectMeasure'
 
 type CanvasGridProps = {
   widthStitches: number
@@ -14,6 +17,13 @@ type CanvasGridProps = {
 }
 
 const CELL_SIZE = 16
+
+function renderObjectCells(obj: CanvasObject): FilledCell[] {
+  if (obj.kind === 'text') {
+    return renderTextToCells(obj.content, getFont(obj.font), obj.direction, obj.scale)
+  }
+  return renderIconToCells(getIcon(obj.iconId), obj.scale)
+}
 
 export function CanvasGrid({
   widthStitches,
@@ -53,9 +63,7 @@ export function CanvasGrid({
   function handlePointerDown(e: React.PointerEvent, obj: CanvasObject) {
     e.stopPropagation()
     onSelect(obj.id)
-    if (obj.kind !== 'text') return
-    const font = getFont(obj.font)
-    const { width, height } = measureText(obj.content, font, obj.direction, obj.scale)
+    const { width, height } = measureObject(obj)
     dragRef.current = {
       id: obj.id,
       startPointerX: e.clientX,
@@ -101,9 +109,7 @@ export function CanvasGrid({
       />
       <g className="canvas-grid__objects">
         {objects.map((obj) => {
-          if (obj.kind !== 'text') return null
-          const font = getFont(obj.font)
-          const cells = renderTextToCells(obj.content, font, obj.direction, obj.scale)
+          const cells = renderObjectCells(obj)
           const isSelected = obj.id === selectedId
           return (
             <g

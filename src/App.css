@@ -137,6 +137,31 @@
   cursor: grab;
 }
 
+.icon-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.icon-thumb-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 1;
+  padding: 4px;
+  background: #2a2a2a;
+}
+
+.icon-thumb-btn svg {
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.icon-thumb-btn--active {
+  outline: 2px solid #646cff;
+  outline-offset: 1px;
+}
+
 .canvas-area {
   display: flex;
   flex-direction: column;

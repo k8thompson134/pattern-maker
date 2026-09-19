@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
 import { CanvasGrid } from './components/CanvasGrid'
-import { createEmptyProject, type TextDirection, type TextObject } from './lib/types'
+import { ColorSwatchPicker } from './components/ColorSwatchPicker'
+import { IconThumb } from './components/IconThumb'
+import { createEmptyProject, type IconObject, type TextDirection, type TextObject } from './lib/types'
 import { loadProject, saveProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { measureText } from './lib/textRender'
+import { ICON_LIBRARY, getIcon } from './lib/icons'
+import { measureIcon } from './lib/iconRender'
+import { clampToCanvas } from './lib/objectMeasure'
 import './App.css'
 
 const MIN_ZOOM = 0.5
@@ -14,7 +19,9 @@ function App() {
   const [project, setProject] = useState(() => loadProject() ?? createEmptyProject('Untitled'))
   const [draftText, setDraftText] = useState('')
   const [draftFontId, setDraftFontId] = useState(AVAILABLE_FONTS[0].id)
-  const [draftColor, setDraftColor] = useState(DMC_STARTER_COLORS[0])
+  const [draftTextColor, setDraftTextColor] = useState(DMC_STARTER_COLORS[0])
+  const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
+  const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -38,18 +45,48 @@ function App() {
       scale: 1,
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
-      color: draftColor,
+      color: draftTextColor,
     }
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
     setDraftText('')
   }
 
-  function updateSelectedObject(patch: Partial<TextObject>) {
+  function addIconObject() {
+    const icon = getIcon(draftIconId)
+    const { width, height } = measureIcon(icon, 1)
+    const newObject: IconObject = {
+      id: crypto.randomUUID(),
+      kind: 'icon',
+      iconId: draftIconId,
+      scale: 1,
+      x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
+      y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
+      color: draftIconColor,
+    }
+    setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
+  }
+
+  function updateTextObject(patch: Partial<Omit<TextObject, 'id' | 'kind'>>) {
     if (!selectedObject) return
     setProject((p) => ({
       ...p,
       objects: p.objects.map((o) =>
-        o.id === selectedObject.id && o.kind === 'text' ? { ...o, ...patch } : o,
+        o.id === selectedObject.id && o.kind === 'text'
+          ? clampToCanvas({ ...o, ...patch }, p.widthStitches, p.heightStitches)
+          : o,
+      ),
+      updatedAt: new Date().toISOString(),
+    }))
+  }
+
+  function updateIconObject(patch: Partial<Omit<IconObject, 'id' | 'kind'>>) {
+    if (!selectedObject) return
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) =>
+        o.id === selectedObject.id && o.kind === 'icon'
+          ? clampToCanvas({ ...o, ...patch }, p.widthStitches, p.heightStitches)
+          : o,
       ),
       updatedAt: new Date().toISOString(),
     }))
@@ -99,41 +136,57 @@ function App() {
               </option>
             ))}
           </select>
-          <div className="swatch-row">
-            {DMC_STARTER_COLORS.map((c) => (
-              <button
-                key={c.dmcCode}
-                type="button"
-                className={`swatch${draftColor.dmcCode === c.dmcCode ? ' swatch--selected' : ''}`}
-                style={{ backgroundColor: c.hex }}
-                title={`DMC ${c.dmcCode} · ${c.name}`}
-                onClick={() => setDraftColor(c)}
-              />
-            ))}
-          </div>
+          <ColorSwatchPicker selected={draftTextColor} onSelect={setDraftTextColor} />
           <button type="button" onClick={addTextObject}>
             Add text
           </button>
         </div>
 
-        {selectedObject && selectedObject.kind === 'text' && (
-          <div className="tool-section selected-panel">
-            <h3>Selected text</h3>
-            <p className="selected-panel__label">"{selectedObject.content}"</p>
+        <div className="tool-section">
+          <h3>Icons</h3>
+          <div className="icon-grid">
+            {ICON_LIBRARY.map((icon) => (
+              <button
+                key={icon.id}
+                type="button"
+                className={`icon-thumb-btn${draftIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
+                title={icon.name}
+                onClick={() => setDraftIconId(icon.id)}
+              >
+                <IconThumb icon={icon} color="#ddd" />
+              </button>
+            ))}
+          </div>
+          <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
+          <button type="button" onClick={addIconObject}>
+            Add icon
+          </button>
+        </div>
 
-            <label className="field-label">Direction</label>
-            <div className="button-row">
-              {(['horizontal', 'vertical'] as TextDirection[]).map((dir) => (
-                <button
-                  key={dir}
-                  type="button"
-                  className={`toggle-btn${selectedObject.direction === dir ? ' toggle-btn--active' : ''}`}
-                  onClick={() => updateSelectedObject({ direction: dir })}
-                >
-                  {dir === 'horizontal' ? 'Across' : 'Down'}
-                </button>
-              ))}
-            </div>
+        {selectedObject && (
+          <div className="tool-section selected-panel">
+            <h3>Selected {selectedObject.kind}</h3>
+            <p className="selected-panel__label">
+              {selectedObject.kind === 'text' ? `"${selectedObject.content}"` : getIcon(selectedObject.iconId).name}
+            </p>
+
+            {selectedObject.kind === 'text' && (
+              <>
+                <label className="field-label">Direction</label>
+                <div className="button-row">
+                  {(['horizontal', 'vertical'] as TextDirection[]).map((dir) => (
+                    <button
+                      key={dir}
+                      type="button"
+                      className={`toggle-btn${selectedObject.direction === dir ? ' toggle-btn--active' : ''}`}
+                      onClick={() => updateTextObject({ direction: dir })}
+                    >
+                      {dir === 'horizontal' ? 'Across' : 'Down'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
 
             <label className="field-label">Size</label>
             <div className="button-row">
@@ -142,7 +195,9 @@ function App() {
                   key={s}
                   type="button"
                   className={`toggle-btn${selectedObject.scale === s ? ' toggle-btn--active' : ''}`}
-                  onClick={() => updateSelectedObject({ scale: s })}
+                  onClick={() =>
+                    selectedObject.kind === 'text' ? updateTextObject({ scale: s }) : updateIconObject({ scale: s })
+                  }
                 >
                   {s}×
                 </button>
@@ -150,18 +205,12 @@ function App() {
             </div>
 
             <label className="field-label">Color</label>
-            <div className="swatch-row">
-              {DMC_STARTER_COLORS.map((c) => (
-                <button
-                  key={c.dmcCode}
-                  type="button"
-                  className={`swatch${selectedObject.color.dmcCode === c.dmcCode ? ' swatch--selected' : ''}`}
-                  style={{ backgroundColor: c.hex }}
-                  title={`DMC ${c.dmcCode} · ${c.name}`}
-                  onClick={() => updateSelectedObject({ color: c })}
-                />
-              ))}
-            </div>
+            <ColorSwatchPicker
+              selected={selectedObject.color}
+              onSelect={(c) =>
+                selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
+              }
+            />
 
             <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
               Delete

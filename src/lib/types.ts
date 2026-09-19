@@ -22,10 +22,9 @@ export type IconObject = {
   id: string
   kind: 'icon'
   iconId: string
+  scale: number
   x: number
   y: number
-  width: number
-  height: number
   color: StitchColor
 }
 
