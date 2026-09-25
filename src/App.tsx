@@ -15,7 +15,10 @@ import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
+import { useIsMobile } from './useIsMobile'
 import './App.css'
+
+type ToolTab = 'text' | 'icons' | 'stamp' | 'draw' | 'canvas'
 
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 2.5
@@ -33,6 +36,8 @@ function App() {
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
+  const [activeTab, setActiveTab] = useState<ToolTab>('text')
+  const isMobile = useIsMobile()
   const [drawMode, setDrawMode] = useState(false)
   const [stampMode, setStampMode] = useState(false)
   const [drawErase, setDrawErase] = useState(false)
@@ -477,6 +482,145 @@ function App() {
     ).values(),
   ]
 
+  const canvasBody = (
+    <>
+      <div className="size-input-row">
+        <label>
+          W
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={widthInput}
+            onChange={(e) => setWidthInput(e.target.value)}
+            onBlur={commitWidthInput}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </label>
+        <label>
+          H
+          <input
+            type="number"
+            min={1}
+            max={500}
+            value={heightInput}
+            onChange={(e) => setHeightInput(e.target.value)}
+            onBlur={commitHeightInput}
+            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+          />
+        </label>
+      </div>
+      <label className="field-label">Fabric count (stitches/inch)</label>
+      <input
+        type="number"
+        min={1}
+        max={30}
+        value={spiInput}
+        onChange={(e) => setSpiInput(e.target.value)}
+        onBlur={commitSpiInput}
+        onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      />
+    </>
+  )
+  const textBody = (
+    <>
+      <input
+        type="text"
+        value={draftText}
+        onChange={(e) => setDraftText(e.target.value)}
+        placeholder="Type a phrase"
+      />
+      <select value={draftFontId} onChange={(e) => setDraftFontId(e.target.value)}>
+        {AVAILABLE_FONTS.map((f) => (
+          <option key={f.id} value={f.id}>
+            {f.name}
+          </option>
+        ))}
+      </select>
+      <ColorSwatchPicker selected={draftTextColor} onSelect={setDraftTextColor} />
+      <button type="button" className="primary-btn" onClick={addTextObject}>
+        Add text
+      </button>
+    </>
+  )
+  const iconsBody = (
+    <>
+      <div className="icon-grid">
+        {ICON_LIBRARY.map((icon) => (
+          <button
+            key={icon.id}
+            type="button"
+            className={`icon-thumb-btn${draftIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
+            title={icon.name}
+            onClick={() => setDraftIconId(icon.id)}
+          >
+            <IconThumb icon={icon} color="#ddd" />
+          </button>
+        ))}
+      </div>
+      <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
+      <button type="button" className="primary-btn" onClick={addIconObject}>
+        Add icon
+      </button>
+    </>
+  )
+  const stampBody = (
+    <>
+      <div className="icon-grid">
+        {MINI_ICON_LIBRARY.map((icon) => (
+          <button
+            key={icon.id}
+            type="button"
+            className={`icon-thumb-btn${draftMiniIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
+            title={icon.name}
+            onClick={() => setDraftMiniIconId(icon.id)}
+          >
+            <IconThumb icon={icon} color="#ddd" pixelSize={6} />
+          </button>
+        ))}
+      </div>
+      <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
+        {stampMode ? 'Done stamping' : 'Stamp mode'}
+      </button>
+    </>
+  )
+  const drawBody = (
+    <>
+      <div className="button-row">
+        <button
+          type="button"
+          className={`toggle-btn${!drawErase ? ' toggle-btn--active' : ''}`}
+          onClick={() => setDrawErase(false)}
+        >
+          Paint
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn${drawErase ? ' toggle-btn--active' : ''}`}
+          onClick={() => setDrawErase(true)}
+        >
+          Erase
+        </button>
+      </div>
+      {!drawErase && <ColorSwatchPicker selected={drawColor} onSelect={setDrawColor} />}
+      <button
+        type="button"
+        className={drawMode ? 'toggle-btn--active' : ''}
+        onClick={toggleDrawMode}
+      >
+        {drawMode ? 'Done drawing' : 'Start drawing'}
+      </button>
+    </>
+  )
+
+  const toolSections: { key: ToolTab; tab: string; title: string; body: React.ReactNode; defaultOpen: boolean }[] = [
+    { key: 'text', tab: 'Text', title: 'Text', body: textBody, defaultOpen: true },
+    { key: 'icons', tab: 'Icons', title: 'Icons', body: iconsBody, defaultOpen: true },
+    { key: 'stamp', tab: 'Stamp', title: 'Stamp (tiny decorations)', body: stampBody, defaultOpen: false },
+    { key: 'draw', tab: 'Draw', title: 'Draw', body: drawBody, defaultOpen: false },
+    { key: 'canvas', tab: 'Canvas', title: 'Canvas Size', body: canvasBody, defaultOpen: false },
+  ]
+
   const dpad = (
     <div className="dpad">
       <span />
@@ -522,7 +666,6 @@ function App() {
             {multiSelect ? 'Done selecting' : 'Select multiple'}
           </button>
         </div>
-        {multiSelect && <p className="tool-placeholder">Tap objects to add or remove them. Shift-click works too.</p>}
 
         {selectedObject && (
           <div className="tool-section selected-panel" ref={selectedPanelRef}>
@@ -583,33 +726,36 @@ function App() {
               </>
             )}
 
-            <label className="field-label">Position</label>
-            {dpad}
-
-            {selectedCanTransform && (
-              <>
-                <label className="field-label">Size</label>
-                <div className="stepper-row">
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    disabled={selectedObject.scale <= 1}
-                    onClick={() => setSelectedScale(selectedObject.scale - 1)}
-                  >
-                    −
-                  </button>
-                  <span className="stepper-value">{selectedObject.scale}×</span>
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
-                    onClick={() => setSelectedScale(selectedObject.scale + 1)}
-                  >
-                    +
-                  </button>
+            <div className="move-size-row">
+              <div>
+                <label className="field-label">Position</label>
+                {dpad}
+              </div>
+              {selectedCanTransform && (
+                <div>
+                  <label className="field-label">Size</label>
+                  <div className="stepper-row">
+                    <button
+                      type="button"
+                      className="stepper-btn"
+                      disabled={selectedObject.scale <= 1}
+                      onClick={() => setSelectedScale(selectedObject.scale - 1)}
+                    >
+                      −
+                    </button>
+                    <span className="stepper-value">{selectedObject.scale}×</span>
+                    <button
+                      type="button"
+                      className="stepper-btn"
+                      disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
+                      onClick={() => setSelectedScale(selectedObject.scale + 1)}
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
-              </>
-            )}
+              )}
+            </div>
 
             {/* Everything below here is arrange/duplicate-pattern tooling used far
                 less often than editing content/color/position/size above — grouped
@@ -765,139 +911,19 @@ function App() {
           </div>
         )}
 
-        <details className="tool-section" open>
-          <summary>Canvas Size</summary>
-          <div className="size-input-row">
-            <label>
-              W
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={widthInput}
-                onChange={(e) => setWidthInput(e.target.value)}
-                onBlur={commitWidthInput}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              />
-            </label>
-            <label>
-              H
-              <input
-                type="number"
-                min={1}
-                max={500}
-                value={heightInput}
-                onChange={(e) => setHeightInput(e.target.value)}
-                onBlur={commitHeightInput}
-                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              />
-            </label>
-          </div>
-          <label className="field-label">Fabric count (stitches/inch)</label>
-          <input
-            type="number"
-            min={1}
-            max={30}
-            value={spiInput}
-            onChange={(e) => setSpiInput(e.target.value)}
-            onBlur={commitSpiInput}
-            onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-          />
-        </details>
-
-        <details className="tool-section" open>
-          <summary>Text</summary>
-          <input
-            type="text"
-            value={draftText}
-            onChange={(e) => setDraftText(e.target.value)}
-            placeholder="Type a phrase"
-          />
-          <select value={draftFontId} onChange={(e) => setDraftFontId(e.target.value)}>
-            {AVAILABLE_FONTS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.name}
-              </option>
+        {/* Mobile shows one tool at a time via the tab strip under the sticky canvas
+            (and hides it entirely while something is selected, so the Selected panel
+            sits right under the canvas). Desktop keeps every tool as a collapsible card. */}
+        {isMobile
+          ? !hasSelection && (
+              <div className="tool-section">{toolSections.find((t) => t.key === activeTab)?.body}</div>
+            )
+          : toolSections.map((t) => (
+              <details key={t.key} className="tool-section" open={t.defaultOpen}>
+                <summary>{t.title}</summary>
+                {t.body}
+              </details>
             ))}
-          </select>
-          <ColorSwatchPicker selected={draftTextColor} onSelect={setDraftTextColor} />
-          <button type="button" className="primary-btn" onClick={addTextObject}>
-            Add text
-          </button>
-        </details>
-
-        <details className="tool-section" open>
-          <summary>Icons</summary>
-          <div className="icon-grid">
-            {ICON_LIBRARY.map((icon) => (
-              <button
-                key={icon.id}
-                type="button"
-                className={`icon-thumb-btn${draftIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
-                title={icon.name}
-                onClick={() => setDraftIconId(icon.id)}
-              >
-                <IconThumb icon={icon} color="#ddd" />
-              </button>
-            ))}
-          </div>
-          <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
-          <button type="button" className="primary-btn" onClick={addIconObject}>
-            Add icon
-          </button>
-        </details>
-
-        <details className="tool-section">
-          <summary>Stamp (tiny decorations)</summary>
-          <div className="icon-grid">
-            {MINI_ICON_LIBRARY.map((icon) => (
-              <button
-                key={icon.id}
-                type="button"
-                className={`icon-thumb-btn${draftMiniIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
-                title={icon.name}
-                onClick={() => setDraftMiniIconId(icon.id)}
-              >
-                <IconThumb icon={icon} color="#ddd" pixelSize={6} />
-              </button>
-            ))}
-          </div>
-          <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
-            {stampMode ? 'Done stamping' : 'Stamp mode'}
-          </button>
-          {stampMode && <p className="tool-placeholder">Tap the canvas to drop tiny icons as decoration.</p>}
-        </details>
-
-        <details className="tool-section">
-          <summary>Draw</summary>
-          <div className="button-row">
-            <button
-              type="button"
-              className={`toggle-btn${!drawErase ? ' toggle-btn--active' : ''}`}
-              onClick={() => setDrawErase(false)}
-            >
-              Paint
-            </button>
-            <button
-              type="button"
-              className={`toggle-btn${drawErase ? ' toggle-btn--active' : ''}`}
-              onClick={() => setDrawErase(true)}
-            >
-              Erase
-            </button>
-          </div>
-          {!drawErase && <ColorSwatchPicker selected={drawColor} onSelect={setDrawColor} />}
-          <button
-            type="button"
-            className={drawMode ? 'toggle-btn--active' : ''}
-            onClick={toggleDrawMode}
-          >
-            {drawMode ? 'Done drawing' : 'Start drawing'}
-          </button>
-          {drawMode && (
-            <p className="tool-placeholder">Tap cells on the canvas to {drawErase ? 'erase' : 'paint'}.</p>
-          )}
-        </details>
       </aside>
 
       <main className="canvas-area" ref={canvasAreaRef}>
@@ -913,8 +939,8 @@ function App() {
         )}
         <div className="canvas-meta">
           <span>
-            {project.widthStitches}×{project.heightStitches} stitches · {inchesWidth}"×{inchesHeight}" at{' '}
-            {project.fabric.stitchesPerInch} stitches/inch
+            {project.widthStitches}×{project.heightStitches} stitches · {inchesWidth}"×{inchesHeight}"
+            <span className="canvas-meta__extra"> at {project.fabric.stitchesPerInch} stitches/inch</span>
           </span>
           <span className="zoom-controls">
             <button type="button" onClick={() => setZoom(project.zoom - 0.25)} disabled={project.zoom <= MIN_ZOOM}>
@@ -926,6 +952,23 @@ function App() {
             </button>
           </span>
         </div>
+        {(drawMode || stampMode || multiSelect) && (
+          <div className="mode-chip">
+            <span>
+              {drawMode
+                ? `Drawing — tap cells to ${drawErase ? 'erase' : 'paint'}`
+                : stampMode
+                  ? 'Stamping — tap to drop decorations'
+                  : 'Selecting multiple — tap objects to add/remove'}
+            </span>
+            <button
+              type="button"
+              onClick={drawMode ? toggleDrawMode : stampMode ? toggleStampMode : toggleMultiSelect}
+            >
+              Done
+            </button>
+          </div>
+        )}
         <div className="canvas-scroll">
           <CanvasGrid
             widthStitches={project.widthStitches}
@@ -945,6 +988,23 @@ function App() {
             onStamp={addIconObjectAt}
           />
         </div>
+        {isMobile && (
+          <nav className="tool-tabs">
+            {toolSections.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                className={`tool-tab${!hasSelection && activeTab === t.key ? ' tool-tab--active' : ''}`}
+                onClick={() => {
+                  setActiveTab(t.key)
+                  setSelectedIds([])
+                }}
+              >
+                {t.tab}
+              </button>
+            ))}
+          </nav>
+        )}
       </main>
 
       <aside className="palette-panel">

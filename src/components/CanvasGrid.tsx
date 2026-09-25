@@ -28,6 +28,7 @@ type CanvasGridProps = {
 
 export const CELL_SIZE = 16
 const HANDLE_SIZE = 24
+const HANDLE_VISIBLE_SIZE = 12
 
 function renderObjectCells(obj: TextObject | IconObject): FilledCell[] {
   if (obj.kind === 'text') {
@@ -326,15 +327,27 @@ export function CanvasGrid({
             {effectiveObj &&
               effectiveObj.kind !== 'pixels' &&
               CORNER_HANDLES.map((handle) => (
-                <rect
-                  key={handle}
-                  x={corners[handle].cx - HANDLE_SIZE / 2}
-                  y={corners[handle].cy - HANDLE_SIZE / 2}
-                  width={HANDLE_SIZE}
-                  height={HANDLE_SIZE}
-                  className={`resize-handle resize-handle--${handle}`}
-                  onPointerDown={(e) => handleResizePointerDown(e, effectiveObj, handle)}
-                />
+                // 24px invisible touch target (the touch-size fix from Known Issues)
+                // with a smaller visible square, so handles don't hide small objects.
+                <g key={handle}>
+                  <rect
+                    x={corners[handle].cx - HANDLE_SIZE / 2}
+                    y={corners[handle].cy - HANDLE_SIZE / 2}
+                    width={HANDLE_SIZE}
+                    height={HANDLE_SIZE}
+                    fill="transparent"
+                    className={`resize-handle-hit resize-handle--${handle}`}
+                    onPointerDown={(e) => handleResizePointerDown(e, effectiveObj, handle)}
+                  />
+                  <rect
+                    x={corners[handle].cx - HANDLE_VISIBLE_SIZE / 2}
+                    y={corners[handle].cy - HANDLE_VISIBLE_SIZE / 2}
+                    width={HANDLE_VISIBLE_SIZE}
+                    height={HANDLE_VISIBLE_SIZE}
+                    className="resize-handle"
+                    pointerEvents="none"
+                  />
+                </g>
               ))}
           </g>
         )

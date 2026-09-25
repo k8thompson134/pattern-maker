@@ -117,6 +117,16 @@ details.tool-section > summary {
   transition: background 0.12s ease;
 }
 
+/* A closed card is just its summary bar — without this the card's bottom
+   padding leaves an empty band under the title. */
+details.tool-section:not([open]) {
+  padding-bottom: 0;
+}
+
+details.tool-section:not([open]) > summary {
+  border-radius: var(--radius);
+}
+
 details.tool-section[open] > summary {
   margin-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
@@ -339,6 +349,63 @@ details.tool-section > summary:hover {
   background: transparent;
 }
 
+/* Stacked in the narrow desktop sidebar; side by side on mobile (see media
+   query), where the full-width D-pad column is otherwise mostly empty space. */
+.move-size-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.move-size-row > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+/* Visible whenever Draw/Stamp/Select-multiple is on. Those modes change what a
+   canvas tap does, and their toggles live in panels that scroll away or sit in
+   another tab — without this a stray tap paints or stamps with no warning. */
+.mode-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent-bg);
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.mode-chip button {
+  padding: 4px 14px;
+  flex-shrink: 0;
+}
+
+.tool-tabs {
+  display: flex;
+  border-top: 1px solid var(--border);
+}
+
+.tool-tab {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-dim);
+  padding: 12px 4px;
+  font-size: 0.85rem;
+}
+
+.tool-tab--active {
+  color: var(--accent-strong);
+  border-bottom-color: var(--accent);
+}
+
 .zoom-controls {
   display: flex;
   align-items: center;
@@ -439,6 +506,9 @@ details.tool-section > summary:hover {
   fill: #fff;
   stroke: var(--accent);
   stroke-width: 2;
+}
+
+.resize-handle-hit {
   touch-action: none;
   cursor: pointer;
 }
@@ -482,6 +552,33 @@ details.tool-section > summary:hover {
 
   .toolbar {
     order: 2;
+  }
+
+  .toolbar > h2 {
+    display: none;
+  }
+
+  .canvas-meta__extra {
+    display: none;
+  }
+
+  .toolbar > .button-row button {
+    font-size: 0.8rem;
+    white-space: nowrap;
+    padding-inline: 6px;
+  }
+
+  .icon-grid {
+    grid-template-columns: repeat(6, 1fr);
+  }
+
+  .move-size-row {
+    flex-direction: row;
+    gap: var(--space-4);
+  }
+
+  .move-size-row .dpad {
+    justify-content: start;
   }
 
   .palette-panel {
