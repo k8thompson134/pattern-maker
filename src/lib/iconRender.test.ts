@@ -35,21 +35,19 @@ describe('renderIconToCells', () => {
   // Icons that are meant to be left-right mirror-symmetric by design. A lopsided
   // row here reads as a stray extra bit sticking out on one side (the heart bitmap
   // had exactly this bug: row 0 was '011001100', not a mirror of itself).
-  // moon/lightning/music-note/rose are intentionally asymmetric and excluded
-  // (rose's leaves deliberately alternate left/right rather than mirroring).
   const SYMMETRIC_ICON_IDS = [
     'heart',
     'star',
-    'circle',
-    'diamond',
-    'cross',
-    'arrow-up',
     'sun',
-    'paw',
+    'rainbow',
     'flower',
+    'butterfly',
+    'ghost',
+    'diamond',
+    'circle',
     'square',
     'triangle',
-    'fist',
+    'arrow-up',
   ]
 
   it.each(SYMMETRIC_ICON_IDS)('%s is left-right mirror-symmetric', (id) => {
@@ -71,6 +69,15 @@ describe('measureIcon', () => {
 describe('getIcon', () => {
   it('falls back to the first icon for an unknown id', () => {
     expect(getIcon('does-not-exist')).toEqual(ICON_LIBRARY[0])
+  })
+
+  it('still resolves retired icons so old saves keep their shape', () => {
+    for (const id of ['cross', 'paw', 'fist']) {
+      const icon = getIcon(id)
+      expect(icon.id).toBe(id)
+      expect(icon.rows.length).toBe(icon.height)
+      expect(ICON_LIBRARY.some((i) => i.id === id)).toBe(false)
+    }
   })
 
   it('has no duplicate ids in the library', () => {
