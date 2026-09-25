@@ -14,6 +14,7 @@ import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
+import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
 import './App.css'
 
 const MIN_ZOOM = 0.2
@@ -30,7 +31,8 @@ function App() {
   const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [multiSelect, setMultiSelect] = useState(false)
   const [drawMode, setDrawMode] = useState(false)
   const [stampMode, setStampMode] = useState(false)
   const [drawErase, setDrawErase] = useState(false)
@@ -45,6 +47,8 @@ function App() {
   const selectedPanelRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLElement>(null)
   const canvasAreaRef = useRef<HTMLElement>(null)
+
+  const hasSelection = selectedIds.length > 0
 
   useEffect(() => {
     setSaveError(!saveProject(project))
@@ -61,7 +65,7 @@ function App() {
   useEffect(() => {
     const toolbar = toolbarRef.current
     const panel = selectedPanelRef.current
-    if (!selectedId || !toolbar || !panel) return
+    if (!hasSelection || !toolbar || !panel) return
     // Desktop: .toolbar itself scrolls. Mobile (<=860px, matching the
     // breakpoint in App.css): .toolbar's overflow is set to visible and the
     // whole page scrolls instead — check the same breakpoint directly rather
@@ -78,7 +82,9 @@ function App() {
       const top = panel.getBoundingClientRect().top + window.scrollY - stickyHeight
       window.scrollTo({ top, behavior: 'smooth' })
     }
-  }, [selectedId])
+    // Keyed on empty→non-empty, not every selection change — otherwise each tap in
+    // Select-multiple mode would jump the mobile page away from the canvas.
+  }, [hasSelection])
 
   useEffect(() => {
     setWidthInput(String(project.widthStitches))
@@ -104,7 +110,12 @@ function App() {
 
   const inchesWidth = (project.widthStitches / project.fabric.stitchesPerInch).toFixed(1)
   const inchesHeight = (project.heightStitches / project.fabric.stitchesPerInch).toFixed(1)
-  const selectedObject = project.objects.find((o) => o.id === selectedId) ?? null
+  const selectedObjects = project.objects.filter((o) => selectedIds.includes(o.id))
+  // The full per-object panel only applies to a single object; multi-selections and
+  // groups get the smaller move/duplicate/delete/group panel instead.
+  const selectedObject = selectedObjects.length === 1 ? selectedObjects[0] : null
+  const selectionIsOneGroup =
+    selectedObjects.length > 1 && selectedObjects.every((o) => o.groupId && o.groupId === selectedObjects[0].groupId)
   // Pixel drawings scale by adding/removing stitches, not a uniform NxN factor,
   // so color/size/rotation/repeat controls (all keyed off scale/color) don't apply.
   const selectedCanTransform = selectedObject !== null && selectedObject.kind !== 'pixels'
@@ -171,27 +182,39 @@ function App() {
     }))
   }
 
-  function deleteSelectedObject() {
-    if (!selectedObject) return
+  function deleteSelection() {
     setProject((p) => ({
       ...p,
-      objects: p.objects.filter((o) => o.id !== selectedObject.id),
+      objects: p.objects.filter((o) => !selectedIds.includes(o.id)),
       updatedAt: new Date().toISOString(),
     }))
-    setSelectedId(null)
+    setSelectedIds([])
   }
 
-  function duplicateSelectedObject() {
-    if (!selectedObject) return
-    const { width } = measureObject(selectedObject)
-    const offset = Math.max(width, 2)
-    const copy = { ...selectedObject, id: createId(), x: selectedObject.x + offset, y: selectedObject.y }
+  function duplicateSelection() {
+    const bounds = selectionBounds(selectedObjects)
+    if (!bounds) return
+    const { dx, dy } = clampSelectionDelta(bounds, Math.max(bounds.width, 2), 0, project.widthStitches, project.heightStitches)
+    const copies = cloneSelection(selectedObjects, dx, dy)
+    setProject((p) => ({ ...p, objects: [...p.objects, ...copies], updatedAt: new Date().toISOString() }))
+    setSelectedIds(copies.map((c) => c.id))
+  }
+
+  function groupSelection() {
+    const groupId = createId()
     setProject((p) => ({
       ...p,
-      objects: [...p.objects, clampToCanvas(copy, p.widthStitches, p.heightStitches)],
+      objects: p.objects.map((o) => (selectedIds.includes(o.id) ? { ...o, groupId } : o)),
       updatedAt: new Date().toISOString(),
     }))
-    setSelectedId(copy.id)
+  }
+
+  function ungroupSelection() {
+    setProject((p) => ({
+      ...p,
+      objects: p.objects.map((o) => (selectedIds.includes(o.id) ? { ...o, groupId: undefined } : o)),
+      updatedAt: new Date().toISOString(),
+    }))
   }
 
   // Repeats the selected object `count` times total (the original plus count-1
@@ -214,10 +237,11 @@ function App() {
     setProject((p) => ({ ...p, objects: [...p.objects, ...copies], updatedAt: new Date().toISOString() }))
   }
 
-  function moveObject(id: string, x: number, y: number) {
+  function moveSelection(ids: string[], dx: number, dy: number) {
     setProject((p) => ({
       ...p,
-      objects: p.objects.map((o) => (o.id === id ? { ...o, x, y } : o)),
+      objects: p.objects.map((o) => (ids.includes(o.id) ? { ...o, x: o.x + dx, y: o.y + dy } : o)),
+      updatedAt: new Date().toISOString(),
     }))
   }
 
@@ -229,17 +253,12 @@ function App() {
     }))
   }
 
-  function nudgeSelectedObject(dx: number, dy: number) {
-    if (!selectedObject) return
-    setProject((p) => ({
-      ...p,
-      objects: p.objects.map((o) =>
-        o.id === selectedObject.id
-          ? clampToCanvas({ ...o, x: o.x + dx, y: o.y + dy }, p.widthStitches, p.heightStitches)
-          : o,
-      ),
-      updatedAt: new Date().toISOString(),
-    }))
+  function nudgeSelection(dx: number, dy: number) {
+    const bounds = selectionBounds(selectedObjects)
+    if (!bounds) return
+    const clamped = clampSelectionDelta(bounds, dx, dy, project.widthStitches, project.heightStitches)
+    if (clamped.dx === 0 && clamped.dy === 0) return
+    moveSelection(selectedIds, clamped.dx, clamped.dy)
   }
 
   function setSelectedScale(scale: number) {
@@ -318,14 +337,23 @@ function App() {
       return !wasOn
     })
     setStampMode(false)
-    setSelectedId(null)
+    setMultiSelect(false)
+    setSelectedIds([])
   }
 
   function toggleStampMode() {
     setStampMode((wasOn) => !wasOn)
     setDrawMode(false)
     setActivePixelObjectId(null)
-    setSelectedId(null)
+    setMultiSelect(false)
+    setSelectedIds([])
+  }
+
+  function toggleMultiSelect() {
+    setMultiSelect((wasOn) => !wasOn)
+    setDrawMode(false)
+    setStampMode(false)
+    setActivePixelObjectId(null)
   }
 
   // Stamps a new tiny decoration icon at the tapped grid position — brush
@@ -353,7 +381,7 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (!selectedId) return
+      if (!hasSelection) return
       const active = document.activeElement
       const isTyping =
         active instanceof HTMLInputElement || active instanceof HTMLSelectElement || active instanceof HTMLTextAreaElement
@@ -363,19 +391,19 @@ function App() {
       switch (e.key) {
         case 'ArrowLeft':
           e.preventDefault()
-          nudgeSelectedObject(-step, 0)
+          nudgeSelection(-step, 0)
           break
         case 'ArrowRight':
           e.preventDefault()
-          nudgeSelectedObject(step, 0)
+          nudgeSelection(step, 0)
           break
         case 'ArrowUp':
           e.preventDefault()
-          nudgeSelectedObject(0, -step)
+          nudgeSelection(0, -step)
           break
         case 'ArrowDown':
           e.preventDefault()
-          nudgeSelectedObject(0, step)
+          nudgeSelection(0, step)
           break
       }
     }
@@ -383,7 +411,7 @@ function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, selectedObject])
+  }, [hasSelection, selectedObjects])
 
   function setZoom(zoom: number) {
     setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
@@ -449,6 +477,28 @@ function App() {
     ).values(),
   ]
 
+  const dpad = (
+    <div className="dpad">
+      <span />
+      <button type="button" className="dpad-btn" onClick={() => nudgeSelection(0, -1)}>
+        ↑
+      </button>
+      <span />
+      <button type="button" className="dpad-btn" onClick={() => nudgeSelection(-1, 0)}>
+        ←
+      </button>
+      <span className="dpad-center" />
+      <button type="button" className="dpad-btn" onClick={() => nudgeSelection(1, 0)}>
+        →
+      </button>
+      <span />
+      <button type="button" className="dpad-btn" onClick={() => nudgeSelection(0, 1)}>
+        ↓
+      </button>
+      <span />
+    </div>
+  )
+
   return (
     <div className="app-shell">
       <aside className="toolbar" ref={toolbarRef}>
@@ -468,17 +518,21 @@ function App() {
           >
             Export PDF
           </button>
+          <button type="button" className={multiSelect ? 'toggle-btn--active' : ''} onClick={toggleMultiSelect}>
+            {multiSelect ? 'Done selecting' : 'Select multiple'}
+          </button>
         </div>
+        {multiSelect && <p className="tool-placeholder">Tap objects to add or remove them. Shift-click works too.</p>}
 
         {selectedObject && (
           <div className="tool-section selected-panel" ref={selectedPanelRef}>
             <div className="selected-panel__header">
               <h3>Selected {selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
               <div className="button-row">
-                <button type="button" onClick={duplicateSelectedObject}>
+                <button type="button" onClick={duplicateSelection}>
                   Duplicate
                 </button>
-                <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
+                <button type="button" className="danger-btn" onClick={deleteSelection}>
                   Delete
                 </button>
               </div>
@@ -530,25 +584,7 @@ function App() {
             )}
 
             <label className="field-label">Position</label>
-            <div className="dpad">
-              <span />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, -1)}>
-                ↑
-              </button>
-              <span />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(-1, 0)}>
-                ←
-              </button>
-              <span className="dpad-center" />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(1, 0)}>
-                →
-              </button>
-              <span />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, 1)}>
-                ↓
-              </button>
-              <span />
-            </div>
+            {dpad}
 
             {selectedCanTransform && (
               <>
@@ -692,6 +728,40 @@ function App() {
                 </button>
               </details>
             )}
+          </div>
+        )}
+
+        {selectedObjects.length > 1 && (
+          <div className="tool-section selected-panel" ref={selectedPanelRef}>
+            <div className="selected-panel__header">
+              <h3>{selectionIsOneGroup ? 'Selected group' : `${selectedObjects.length} selected`}</h3>
+              <div className="button-row">
+                <button type="button" onClick={duplicateSelection}>
+                  Duplicate
+                </button>
+                <button type="button" className="danger-btn" onClick={deleteSelection}>
+                  Delete
+                </button>
+              </div>
+            </div>
+            <p className="selected-panel__label">
+              {selectedObjects.length} objects{selectionIsOneGroup ? ' · grouped' : ''}
+            </p>
+
+            <label className="field-label">Position</label>
+            {dpad}
+
+            <div className="button-row">
+              {selectionIsOneGroup ? (
+                <button type="button" onClick={ungroupSelection}>
+                  Ungroup
+                </button>
+              ) : (
+                <button type="button" onClick={groupSelection}>
+                  Group
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -862,9 +932,10 @@ function App() {
             heightStitches={project.heightStitches}
             zoom={project.zoom}
             objects={project.objects}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onMove={moveObject}
+            selectedIds={selectedIds}
+            multiSelect={multiSelect}
+            onSelectionChange={setSelectedIds}
+            onMoveSelection={moveSelection}
             onResize={resizeObject}
             drawMode={drawMode}
             drawErase={drawErase}

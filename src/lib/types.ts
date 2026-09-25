@@ -11,6 +11,7 @@ export type TextDirection = 'horizontal' | 'vertical'
 export type TextObject = {
   id: string
   kind: 'text'
+  groupId?: string
   content: string
   font: string
   direction: TextDirection
@@ -24,6 +25,7 @@ export type TextObject = {
 export type IconObject = {
   id: string
   kind: 'icon'
+  groupId?: string
   iconId: string
   scale: number
   x: number
@@ -37,6 +39,7 @@ export type PixelCell = { dx: number; dy: number; color: StitchColor }
 export type PixelObject = {
   id: string
   kind: 'pixels'
+  groupId?: string
   x: number
   y: number
   cells: PixelCell[]

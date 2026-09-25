@@ -6,15 +6,17 @@ import { getIcon } from '../lib/icons'
 import { renderIconToCells } from '../lib/iconRender'
 import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
+import { nextSelection, selectionBounds } from '../lib/selection'
 
 type CanvasGridProps = {
   widthStitches: number
   heightStitches: number
   zoom: number
   objects: CanvasObject[]
-  selectedId: string | null
-  onSelect: (id: string | null) => void
-  onMove: (id: string, x: number, y: number) => void
+  selectedIds: string[]
+  multiSelect: boolean
+  onSelectionChange: (ids: string[]) => void
+  onMoveSelection: (ids: string[], dx: number, dy: number) => void
   onResize: (id: string, patch: { scale: number; x: number; y: number }) => void
   drawMode: boolean
   drawErase: boolean
@@ -41,9 +43,10 @@ export function CanvasGrid({
   heightStitches,
   zoom,
   objects,
-  selectedId,
-  onSelect,
-  onMove,
+  selectedIds,
+  multiSelect,
+  onSelectionChange,
+  onMoveSelection,
   onResize,
   drawMode,
   drawErase,
@@ -58,20 +61,20 @@ export function CanvasGrid({
   const svgRef = useRef<SVGSVGElement | null>(null)
 
   const dragRef = useRef<{
-    id: string
+    ids: string[]
     startPointerX: number
     startPointerY: number
-    startObjX: number
-    startObjY: number
-    maxX: number
-    maxY: number
+    minDx: number
+    maxDx: number
+    minDy: number
+    maxDy: number
   } | null>(null)
 
   // Live drag/resize state lives here, not in the parent's saved project — committing
   // every pixel of movement up to the parent triggers a localStorage write on every
   // pointermove event, which is what was making dragging feel laggy. Only the final
   // position/scale gets committed (and saved) on pointer-up.
-  const [dragPreview, setDragPreview] = useState<{ id: string; x: number; y: number } | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ ids: string[]; dx: number; dy: number } | null>(null)
 
   const resizeRef = useRef<{
     id: string
@@ -88,6 +91,16 @@ export function CanvasGrid({
     y: number
   } | null>(null)
 
+  function withPreview(obj: CanvasObject): CanvasObject {
+    if (obj.id === resizePreview?.id && obj.kind !== 'pixels') {
+      return { ...obj, scale: resizePreview.scale, x: resizePreview.x, y: resizePreview.y }
+    }
+    if (dragPreview?.ids.includes(obj.id)) {
+      return { ...obj, x: obj.x + dragPreview.dx, y: obj.y + dragPreview.dy }
+    }
+    return obj
+  }
+
   const lines: React.ReactNode[] = []
   for (let x = 0; x <= widthStitches; x++) {
     lines.push(<line key={`v${x}`} x1={x * cell} y1={0} x2={x * cell} y2={pixelHeight} />)
@@ -99,16 +112,21 @@ export function CanvasGrid({
   function handlePointerDown(e: React.PointerEvent, obj: CanvasObject) {
     e.stopPropagation()
     e.preventDefault()
-    onSelect(obj.id)
-    const { width, height } = measureObject(obj)
+    const additive = multiSelect || e.shiftKey
+    const ids = nextSelection(selectedIds, obj.id, additive, objects)
+    onSelectionChange(ids)
+    // Toggling an object out of an additive selection shouldn't start dragging the rest.
+    if (!ids.includes(obj.id)) return
+    const bounds = selectionBounds(objects.filter((o) => ids.includes(o.id)))
+    if (!bounds) return
     dragRef.current = {
-      id: obj.id,
+      ids,
       startPointerX: e.clientX,
       startPointerY: e.clientY,
-      startObjX: obj.x,
-      startObjY: obj.y,
-      maxX: Math.max(0, widthStitches - width),
-      maxY: Math.max(0, heightStitches - height),
+      minDx: -bounds.x,
+      maxDx: Math.max(0, widthStitches - bounds.width) - bounds.x,
+      minDy: -bounds.y,
+      maxDy: Math.max(0, heightStitches - bounds.height) - bounds.y,
     }
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
@@ -138,9 +156,9 @@ export function CanvasGrid({
     e.preventDefault()
     const deltaX = Math.round((e.clientX - drag.startPointerX) / cell)
     const deltaY = Math.round((e.clientY - drag.startPointerY) / cell)
-    const nextX = Math.min(Math.max(0, drag.startObjX + deltaX), drag.maxX)
-    const nextY = Math.min(Math.max(0, drag.startObjY + deltaY), drag.maxY)
-    setDragPreview({ id: drag.id, x: nextX, y: nextY })
+    const dx = Math.min(Math.max(drag.minDx, deltaX), drag.maxDx)
+    const dy = Math.min(Math.max(drag.minDy, deltaY), drag.maxDy)
+    setDragPreview({ ids: drag.ids, dx, dy })
   }
 
   function handlePointerUp() {
@@ -151,8 +169,8 @@ export function CanvasGrid({
     setResizePreview(null)
 
     const drag = dragRef.current
-    if (drag && dragPreview) {
-      onMove(drag.id, dragPreview.x, dragPreview.y)
+    if (drag && dragPreview && (dragPreview.dx !== 0 || dragPreview.dy !== 0)) {
+      onMoveSelection(drag.ids, dragPreview.dx, dragPreview.dy)
     }
     dragRef.current = null
     setDragPreview(null)
@@ -161,7 +179,6 @@ export function CanvasGrid({
   function handleResizePointerDown(e: React.PointerEvent, obj: TextObject | IconObject, handle: CornerHandle) {
     e.stopPropagation()
     e.preventDefault()
-    onSelect(obj.id)
     const { width, height } = measureObject(obj)
     const { width: baseWidth, height: baseHeight } = measureObject({ ...obj, scale: 1 })
 
@@ -212,17 +229,12 @@ export function CanvasGrid({
         width={pixelWidth}
         height={pixelHeight}
         className="canvas-grid__bg"
-        onPointerDown={() => onSelect(null)}
+        onPointerDown={() => onSelectionChange([])}
       />
       <g className="canvas-grid__objects">
         {objects.map((obj) => {
-          const effectiveObj =
-            obj.id === resizePreview?.id && obj.kind !== 'pixels'
-              ? { ...obj, scale: resizePreview.scale, x: resizePreview.x, y: resizePreview.y }
-              : obj.id === dragPreview?.id
-                ? { ...obj, x: dragPreview.x, y: dragPreview.y }
-                : obj
-          const isSelected = obj.id === selectedId
+          const effectiveObj = withPreview(obj)
+          const isSelected = selectedIds.includes(obj.id)
           const { width: hitWidth, height: hitHeight } = measureObject(effectiveObj)
           return (
             <g
@@ -280,17 +292,14 @@ export function CanvasGrid({
       </g>
       <g className="canvas-grid__lines">{lines}</g>
       {(() => {
-        const selected = objects.find((o) => o.id === selectedId)
-        if (!selected) return null
-        const effectiveObj =
-          selected.id === resizePreview?.id && selected.kind !== 'pixels'
-            ? { ...selected, scale: resizePreview.scale, x: resizePreview.x, y: resizePreview.y }
-            : selected.id === dragPreview?.id
-              ? { ...selected, x: dragPreview.x, y: dragPreview.y }
-              : selected
-        const { width, height } = measureObject(effectiveObj)
-        const boxX = effectiveObj.x * cell
-        const boxY = effectiveObj.y * cell
+        const selected = objects.filter((o) => selectedIds.includes(o.id)).map(withPreview)
+        const bounds = selectionBounds(selected)
+        if (!bounds) return null
+        // Corner-resize only applies to a single text/icon object.
+        const effectiveObj = selected.length === 1 ? selected[0] : null
+        const { width, height } = bounds
+        const boxX = bounds.x * cell
+        const boxY = bounds.y * cell
         const boxW = width * cell
         const boxH = height * cell
         const corners: Record<CornerHandle, { cx: number; cy: number }> = {
@@ -314,7 +323,8 @@ export function CanvasGrid({
             />
             {/* Pixel drawings scale by adding/removing individual stitches, not by a
                 uniform NxN block factor, so corner-drag resize doesn't apply to them. */}
-            {effectiveObj.kind !== 'pixels' &&
+            {effectiveObj &&
+              effectiveObj.kind !== 'pixels' &&
               CORNER_HANDLES.map((handle) => (
                 <rect
                   key={handle}
