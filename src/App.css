@@ -17,7 +17,7 @@
 
 .toolbar,
 .palette-panel {
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-5);
   background: var(--bg);
   border-right: 1px solid var(--border);
   overflow-y: auto;
@@ -25,8 +25,12 @@
 
 .toolbar h2,
 .palette-panel h2 {
-  margin: 0 0 var(--space-3);
-  font-size: 1.1rem;
+  margin: 0 0 var(--space-4);
+  font-size: 1.05rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
 }
 
 .palette-panel {
@@ -46,10 +50,28 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-3) var(--space-4) var(--space-4);
-  margin-top: var(--space-3);
+  margin-top: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+}
+
+/* For an open <details>, the browser renders every child except <summary>
+   inside an implicit ::details-content box, which always used a plain block
+   display regardless of the <details> element's own `display: flex` — so
+   .tool-section's flex/gap only ever separated <summary> from that one box,
+   never the individual fields inside it (input, select, swatches, button all
+   touched with zero gap). Re-declare the same flex/gap on the content box
+   itself so spacing applies inside <details> variants the same as it already
+   does for the plain-<div> Selected panel. */
+details.tool-section::details-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.toolbar > .button-row {
+  margin-bottom: var(--space-4);
 }
 
 .tool-section:first-of-type {
@@ -63,37 +85,40 @@
 }
 
 /* <summary> becomes the card's clickable header, full-bleed via negative
-   margin so it reads as an integrated title bar rather than indented text. */
-details.tool-section > summary {
+   margin so it reads as an integrated title bar rather than indented text.
+   No marker glyph (dot/arrow) — a section header, hover state, and cursor
+   are enough signal that it's clickable without adding a small decorative
+   mark next to every title (flagged as clutter in review). */
+/* <details> marker reset shared by every collapsible summary in the toolbar
+   (top-level tool-section cards and the lighter-weight selected-subsection
+   below) — kept as one shared rule so a third details variant doesn't need
+   its own copy of "no default marker, pointer cursor". */
+details.tool-section > summary,
+.selected-subsection > summary {
   cursor: pointer;
-  font-weight: 600;
-  font-size: 0.95rem;
   list-style: none;
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) 0;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius) var(--radius) 0 0;
 }
 
-details.tool-section > summary::-webkit-details-marker {
+details.tool-section > summary::-webkit-details-marker,
+.selected-subsection > summary::-webkit-details-marker {
   display: none;
 }
 
-details.tool-section > summary::before {
-  content: '▸';
-  color: var(--text-faint);
-  font-size: 0.7em;
-  transition: transform 0.15s ease;
-}
-
-details.tool-section[open] > summary::before {
-  transform: rotate(90deg);
+details.tool-section > summary {
+  font-weight: 600;
+  font-size: 0.95rem;
+  letter-spacing: 0.01em;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: calc(var(--space-3) * -1) calc(var(--space-4) * -1) 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius) var(--radius) 0 0;
+  transition: background 0.12s ease;
 }
 
 details.tool-section[open] > summary {
-  margin-bottom: var(--space-1);
+  margin-bottom: var(--space-2);
   border-bottom: 1px solid var(--border);
   padding-bottom: var(--space-3);
 }
@@ -104,7 +129,7 @@ details.tool-section > summary:hover {
 
 .size-input-row {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .size-input-row label {
@@ -190,6 +215,28 @@ details.tool-section > summary:hover {
   flex-shrink: 0;
 }
 
+/* Secondary controls nested inside the Selected panel (rotate/align/layer,
+   repeat) — closed by default, lighter-weight than a top-level .tool-section
+   card since these are occasional actions, not the reason the panel exists. */
+.selected-subsection {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-2);
+  margin-top: var(--space-1);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.selected-subsection > summary {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+.selected-subsection > summary:hover {
+  color: var(--text);
+}
+
 .selected-panel__label {
   font-size: 0.85rem;
   color: var(--text-dim);
@@ -201,16 +248,26 @@ details.tool-section > summary:hover {
   text-transform: uppercase;
   letter-spacing: 0.04em;
   color: var(--text-faint);
-  margin-top: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.field-label:first-child {
+  margin-top: 0;
 }
 
 .button-row {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
+  flex-wrap: wrap;
 }
 
-.toggle-btn {
+.button-row + .button-row {
+  margin-top: var(--space-1);
+}
+
+.button-row > * {
   flex: 1;
+  min-width: 0;
 }
 
 .toggle-btn--active,
@@ -316,6 +373,23 @@ details.tool-section > summary:hover {
   flex-direction: column;
   min-width: 0;
   background: var(--bg);
+}
+
+.save-banner {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
+.save-banner--error {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+.save-banner--warning {
+  background: var(--accent-bg);
+  color: var(--accent-strong);
 }
 
 .canvas-meta {

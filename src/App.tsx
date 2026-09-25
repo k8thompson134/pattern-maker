@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { IconThumb } from './components/IconThumb'
@@ -20,7 +20,10 @@ const MIN_ZOOM = 0.2
 const MAX_ZOOM = 2.5
 
 function App() {
-  const [project, setProject] = useState(() => loadProject() ?? createEmptyProject('Untitled'))
+  const [initialLoad] = useState(() => loadProject())
+  const [project, setProject] = useState(() => initialLoad.project ?? createEmptyProject('Untitled'))
+  const [saveError, setSaveError] = useState(false)
+  const [loadCorrupted] = useState(initialLoad.corrupted)
   const [draftText, setDraftText] = useState('')
   const [draftFontId, setDraftFontId] = useState(AVAILABLE_FONTS[0].id)
   const [draftTextColor, setDraftTextColor] = useState(DMC_STARTER_COLORS[0])
@@ -39,10 +42,43 @@ function App() {
   const [repeatCount, setRepeatCount] = useState(5)
   const [repeatSpacing, setRepeatSpacing] = useState(2)
   const [repeatDirection, setRepeatDirection] = useState<'horizontal' | 'vertical'>('horizontal')
+  const selectedPanelRef = useRef<HTMLDivElement>(null)
+  const toolbarRef = useRef<HTMLElement>(null)
+  const canvasAreaRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
-    saveProject(project)
+    setSaveError(!saveProject(project))
   }, [project])
+
+  // Selecting an object jumps the sidebar to the Selected panel (rendered at
+  // the top) instead of leaving the user to scroll down and hunt for it —
+  // reported as hard to find when the panel only ever appeared at the bottom.
+  // Deliberately scrolls the .toolbar container directly (offsetTop math)
+  // rather than calling scrollIntoView on the panel: scrollIntoView lets the
+  // browser pick the nearest scrollable ancestor and its own alignment, which
+  // on this layout landed the panel mid-scroll instead of pinned to the top —
+  // not anchored to anything solid.
+  useEffect(() => {
+    const toolbar = toolbarRef.current
+    const panel = selectedPanelRef.current
+    if (!selectedId || !toolbar || !panel) return
+    // Desktop: .toolbar itself scrolls. Mobile (<=860px, matching the
+    // breakpoint in App.css): .toolbar's overflow is set to visible and the
+    // whole page scrolls instead — check the same breakpoint directly rather
+    // than inferring it from a scrollHeight/clientHeight comparison, which
+    // forces an extra synchronous layout read to rediscover what the CSS
+    // breakpoint already tells us.
+    if (!window.matchMedia('(max-width: 860px)').matches) {
+      toolbar.scrollTo({ top: panel.offsetTop, behavior: 'smooth' })
+    } else {
+      // On mobile the canvas is position:sticky over the top of the page —
+      // scrolling the panel's bare top under the viewport top hides its
+      // header/name behind the sticky canvas. Clear that height first.
+      const stickyHeight = canvasAreaRef.current?.offsetHeight ?? 0
+      const top = panel.getBoundingClientRect().top + window.scrollY - stickyHeight
+      window.scrollTo({ top, behavior: 'smooth' })
+    }
+  }, [selectedId])
 
   useEffect(() => {
     setWidthInput(String(project.widthStitches))
@@ -69,6 +105,9 @@ function App() {
   const inchesWidth = (project.widthStitches / project.fabric.stitchesPerInch).toFixed(1)
   const inchesHeight = (project.heightStitches / project.fabric.stitchesPerInch).toFixed(1)
   const selectedObject = project.objects.find((o) => o.id === selectedId) ?? null
+  // Pixel drawings scale by adding/removing stitches, not a uniform NxN factor,
+  // so color/size/rotation/repeat controls (all keyed off scale/color) don't apply.
+  const selectedCanTransform = selectedObject !== null && selectedObject.kind !== 'pixels'
 
   function addTextObject() {
     if (!draftText.trim()) return
@@ -412,7 +451,7 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="toolbar">
+      <aside className="toolbar" ref={toolbarRef}>
         <h2>Tools</h2>
         <div className="button-row">
           <button type="button" onClick={() => setProject((p) => ({ ...createEmptyProject('Untitled'), zoom: p.zoom }))}>
@@ -430,6 +469,231 @@ function App() {
             Export PDF
           </button>
         </div>
+
+        {selectedObject && (
+          <div className="tool-section selected-panel" ref={selectedPanelRef}>
+            <div className="selected-panel__header">
+              <h3>Selected {selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
+              <div className="button-row">
+                <button type="button" onClick={duplicateSelectedObject}>
+                  Duplicate
+                </button>
+                <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
+                  Delete
+                </button>
+              </div>
+            </div>
+            <p className="selected-panel__label">
+              {selectedObject.kind === 'text'
+                ? `"${selectedObject.content}"`
+                : selectedObject.kind === 'icon'
+                  ? getIcon(selectedObject.iconId).name
+                  : `${selectedObject.cells.length}-stitch drawing`}
+            </p>
+
+            {selectedObject.kind === 'text' && (
+              <>
+                <label className="field-label">Text</label>
+                <input
+                  type="text"
+                  value={selectedObject.content}
+                  onChange={(e) => updateTextObject({ content: e.target.value })}
+                  placeholder="Edit text..."
+                />
+
+                <label className="field-label">Direction</label>
+                <div className="button-row">
+                  {(['horizontal', 'vertical'] as TextDirection[]).map((dir) => (
+                    <button
+                      key={dir}
+                      type="button"
+                      className={`toggle-btn${selectedObject.direction === dir ? ' toggle-btn--active' : ''}`}
+                      onClick={() => updateTextObject({ direction: dir })}
+                    >
+                      {dir === 'horizontal' ? 'Across' : 'Down'}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {selectedCanTransform && (
+              <>
+                <label className="field-label">Color</label>
+                <ColorSwatchPicker
+                  selected={selectedObject.color}
+                  onSelect={(c) =>
+                    selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
+                  }
+                />
+              </>
+            )}
+
+            <label className="field-label">Position</label>
+            <div className="dpad">
+              <span />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, -1)}>
+                ↑
+              </button>
+              <span />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(-1, 0)}>
+                ←
+              </button>
+              <span className="dpad-center" />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(1, 0)}>
+                →
+              </button>
+              <span />
+              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, 1)}>
+                ↓
+              </button>
+              <span />
+            </div>
+
+            {selectedCanTransform && (
+              <>
+                <label className="field-label">Size</label>
+                <div className="stepper-row">
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    disabled={selectedObject.scale <= 1}
+                    onClick={() => setSelectedScale(selectedObject.scale - 1)}
+                  >
+                    −
+                  </button>
+                  <span className="stepper-value">{selectedObject.scale}×</span>
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
+                    onClick={() => setSelectedScale(selectedObject.scale + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Everything below here is arrange/duplicate-pattern tooling used far
+                less often than editing content/color/position/size above — grouped
+                into a collapsed sub-section instead of competing for the same
+                always-visible space (Repeat in particular was flagged as not
+                important enough to justify the panel jumping the whole view to it). */}
+            <details className="selected-subsection">
+              <summary>Rotate &amp; align</summary>
+              {selectedCanTransform && (
+                <>
+                  <label className="field-label">Rotation</label>
+                  <div className="button-row">
+                    {[0, 90, 180, 270].map((angle) => (
+                      <button
+                        key={angle}
+                        type="button"
+                        className={`toggle-btn${selectedObject.rotation === angle ? ' toggle-btn--active' : ''}`}
+                        onClick={() =>
+                          selectedObject.kind === 'text'
+                            ? updateTextObject({ rotation: angle })
+                            : updateIconObject({ rotation: angle })
+                        }
+                      >
+                        {angle}°
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <label className="field-label">Align</label>
+              <div className="button-row">
+                <button type="button" onClick={() => alignSelectedObject('left')}>
+                  Left
+                </button>
+                <button type="button" onClick={() => alignSelectedObject('center-h')}>
+                  Center
+                </button>
+                <button type="button" onClick={() => alignSelectedObject('right')}>
+                  Right
+                </button>
+              </div>
+              <div className="button-row">
+                <button type="button" onClick={() => alignSelectedObject('top')}>
+                  Top
+                </button>
+                <button type="button" onClick={() => alignSelectedObject('center-v')}>
+                  Middle
+                </button>
+                <button type="button" onClick={() => alignSelectedObject('bottom')}>
+                  Bottom
+                </button>
+              </div>
+              <label className="field-label">Layer</label>
+              <div className="button-row">
+                <button type="button" title="Send backward" onClick={() => reorderSelectedObject('backward')}>
+                  ↓
+                </button>
+                <button type="button" title="Bring forward" onClick={() => reorderSelectedObject('forward')}>
+                  ↑
+                </button>
+                <button type="button" title="Send to back" onClick={() => reorderSelectedObject('back')}>
+                  To Back
+                </button>
+                <button type="button" title="Bring to front" onClick={() => reorderSelectedObject('front')}>
+                  To Front
+                </button>
+              </div>
+            </details>
+
+            {selectedCanTransform && (
+              <details className="selected-subsection">
+                <summary>Repeat (border/string pattern)</summary>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className={`toggle-btn${repeatDirection === 'horizontal' ? ' toggle-btn--active' : ''}`}
+                    onClick={() => setRepeatDirection('horizontal')}
+                  >
+                    →
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-btn${repeatDirection === 'vertical' ? ' toggle-btn--active' : ''}`}
+                    onClick={() => setRepeatDirection('vertical')}
+                  >
+                    ↓
+                  </button>
+                </div>
+                <div className="size-input-row">
+                  <label>
+                    Count
+                    <input
+                      type="number"
+                      min={2}
+                      max={50}
+                      value={repeatCount}
+                      onChange={(e) => setRepeatCount(Math.max(2, Math.min(50, Number(e.target.value) || 2)))}
+                    />
+                  </label>
+                  <label>
+                    Gap
+                    <input
+                      type="number"
+                      min={0}
+                      max={50}
+                      value={repeatSpacing}
+                      onChange={(e) => setRepeatSpacing(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => repeatSelectedObject(repeatCount, repeatSpacing, repeatDirection)}
+                >
+                  Repeat
+                </button>
+              </details>
+            )}
+          </div>
+        )}
 
         <details className="tool-section" open>
           <summary>Canvas Size</summary>
@@ -487,7 +751,7 @@ function App() {
             ))}
           </select>
           <ColorSwatchPicker selected={draftTextColor} onSelect={setDraftTextColor} />
-          <button type="button" onClick={addTextObject}>
+          <button type="button" className="primary-btn" onClick={addTextObject}>
             Add text
           </button>
         </details>
@@ -508,7 +772,7 @@ function App() {
             ))}
           </div>
           <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
-          <button type="button" onClick={addIconObject}>
+          <button type="button" className="primary-btn" onClick={addIconObject}>
             Add icon
           </button>
         </details>
@@ -564,230 +828,19 @@ function App() {
             <p className="tool-placeholder">Tap cells on the canvas to {drawErase ? 'erase' : 'paint'}.</p>
           )}
         </details>
-
-        {selectedObject && (
-          <div className="tool-section selected-panel">
-            <div className="selected-panel__header">
-              <h3>Selected {selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
-              <div className="button-row">
-                <button type="button" onClick={duplicateSelectedObject}>
-                  Duplicate
-                </button>
-                <button type="button" className="danger-btn" onClick={deleteSelectedObject}>
-                  Delete
-                </button>
-              </div>
-            </div>
-            <p className="selected-panel__label">
-              {selectedObject.kind === 'text'
-                ? `"${selectedObject.content}"`
-                : selectedObject.kind === 'icon'
-                  ? getIcon(selectedObject.iconId).name
-                  : `${selectedObject.cells.length}-stitch drawing`}
-            </p>
-
-            <label className="field-label">Layer</label>
-            <div className="button-row">
-              <button type="button" onClick={() => reorderSelectedObject('backward')}>
-                Backward
-              </button>
-              <button type="button" onClick={() => reorderSelectedObject('forward')}>
-                Forward
-              </button>
-            </div>
-            <div className="button-row">
-              <button type="button" onClick={() => reorderSelectedObject('back')}>
-                To Back
-              </button>
-              <button type="button" onClick={() => reorderSelectedObject('front')}>
-                To Front
-              </button>
-            </div>
-
-            {selectedObject.kind === 'text' && (
-              <>
-                <label className="field-label">Text</label>
-                <input
-                  type="text"
-                  value={selectedObject.content}
-                  onChange={(e) => updateTextObject({ content: e.target.value })}
-                  placeholder="Edit text..."
-                />
-
-                <label className="field-label">Direction</label>
-                <div className="button-row">
-                  {(['horizontal', 'vertical'] as TextDirection[]).map((dir) => (
-                    <button
-                      key={dir}
-                      type="button"
-                      className={`toggle-btn${selectedObject.direction === dir ? ' toggle-btn--active' : ''}`}
-                      onClick={() => updateTextObject({ direction: dir })}
-                    >
-                      {dir === 'horizontal' ? 'Across' : 'Down'}
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {selectedObject.kind !== 'pixels' && (
-              <>
-                <label className="field-label">Size</label>
-                <div className="stepper-row">
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    disabled={selectedObject.scale <= 1}
-                    onClick={() => setSelectedScale(selectedObject.scale - 1)}
-                  >
-                    −
-                  </button>
-                  <span className="stepper-value">{selectedObject.scale}×</span>
-                  <button
-                    type="button"
-                    className="stepper-btn"
-                    disabled={selectedObject.scale >= MAX_OBJECT_SCALE}
-                    onClick={() => setSelectedScale(selectedObject.scale + 1)}
-                  >
-                    +
-                  </button>
-                </div>
-              </>
-            )}
-
-            {selectedObject.kind !== 'pixels' && (
-              <>
-                <label className="field-label">Rotation</label>
-                <div className="button-row">
-                  {[0, 90, 180, 270].map((angle) => (
-                    <button
-                      key={angle}
-                      type="button"
-                      className={`toggle-btn${selectedObject.rotation === angle ? ' toggle-btn--active' : ''}`}
-                      onClick={() =>
-                        selectedObject.kind === 'text'
-                          ? updateTextObject({ rotation: angle })
-                          : updateIconObject({ rotation: angle })
-                      }
-                    >
-                      {angle}°
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {selectedObject.kind !== 'pixels' && (
-              <>
-                <label className="field-label">Repeat (border/string pattern)</label>
-                <div className="button-row">
-                  <button
-                    type="button"
-                    className={`toggle-btn${repeatDirection === 'horizontal' ? ' toggle-btn--active' : ''}`}
-                    onClick={() => setRepeatDirection('horizontal')}
-                  >
-                    →
-                  </button>
-                  <button
-                    type="button"
-                    className={`toggle-btn${repeatDirection === 'vertical' ? ' toggle-btn--active' : ''}`}
-                    onClick={() => setRepeatDirection('vertical')}
-                  >
-                    ↓
-                  </button>
-                </div>
-                <div className="size-input-row">
-                  <label>
-                    Count
-                    <input
-                      type="number"
-                      min={2}
-                      max={50}
-                      value={repeatCount}
-                      onChange={(e) => setRepeatCount(Math.max(2, Math.min(50, Number(e.target.value) || 2)))}
-                    />
-                  </label>
-                  <label>
-                    Gap
-                    <input
-                      type="number"
-                      min={0}
-                      max={50}
-                      value={repeatSpacing}
-                      onChange={(e) => setRepeatSpacing(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
-                    />
-                  </label>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => repeatSelectedObject(repeatCount, repeatSpacing, repeatDirection)}
-                >
-                  Repeat
-                </button>
-              </>
-            )}
-
-            <label className="field-label">Position</label>
-            <div className="dpad">
-              <span />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, -1)}>
-                ↑
-              </button>
-              <span />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(-1, 0)}>
-                ←
-              </button>
-              <span className="dpad-center" />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(1, 0)}>
-                →
-              </button>
-              <span />
-              <button type="button" className="dpad-btn" onClick={() => nudgeSelectedObject(0, 1)}>
-                ↓
-              </button>
-              <span />
-            </div>
-
-            {selectedObject.kind !== 'pixels' && (
-              <>
-                <label className="field-label">Color</label>
-                <ColorSwatchPicker
-                  selected={selectedObject.color}
-                  onSelect={(c) =>
-                    selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
-                  }
-                />
-              </>
-            )}
-
-            <label className="field-label">Align</label>
-            <div className="button-row">
-              <button type="button" onClick={() => alignSelectedObject('left')}>
-                Left
-              </button>
-              <button type="button" onClick={() => alignSelectedObject('center-h')}>
-                Center
-              </button>
-              <button type="button" onClick={() => alignSelectedObject('right')}>
-                Right
-              </button>
-            </div>
-            <div className="button-row">
-              <button type="button" onClick={() => alignSelectedObject('top')}>
-                Top
-              </button>
-              <button type="button" onClick={() => alignSelectedObject('center-v')}>
-                Middle
-              </button>
-              <button type="button" onClick={() => alignSelectedObject('bottom')}>
-                Bottom
-              </button>
-            </div>
-          </div>
-        )}
       </aside>
 
-      <main className="canvas-area">
+      <main className="canvas-area" ref={canvasAreaRef}>
+        {saveError && (
+          <p className="save-banner save-banner--error">
+            Couldn't save — your browser's storage may be full. Recent changes may be lost.
+          </p>
+        )}
+        {loadCorrupted && (
+          <p className="save-banner save-banner--warning">
+            Your last saved project couldn't be read and had to be reset. Starting a new one.
+          </p>
+        )}
         <div className="canvas-meta">
           <span>
             {project.widthStitches}×{project.heightStitches} stitches · {inchesWidth}"×{inchesHeight}" at{' '}

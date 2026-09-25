@@ -60,13 +60,14 @@ p {
 
 button {
   font: inherit;
+  font-weight: 500;
   background: var(--surface-2);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: 8px 12px;
+  padding: 9px 14px;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
 }
 
 button:hover:not(:disabled) {
@@ -76,6 +77,7 @@ button:hover:not(:disabled) {
 
 button:active:not(:disabled) {
   background: #34374480;
+  transform: translateY(1px);
 }
 
 button:disabled {
@@ -90,14 +92,38 @@ select:focus-visible {
   outline-offset: 1px;
 }
 
+/* Primary action buttons ("Add text", "Add icon") — these were previously
+   styled identically to every toggle/utility button, which made the actual
+   commit action hard to spot among the surrounding controls. */
+.primary-btn {
+  background: var(--accent);
+  color: #14161f;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.primary-btn:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+/* Inputs get a visibly different shape/fill from buttons (inset look via
+   background + slightly heavier border) so a field reads as "type here"
+   rather than blending in with the button chrome around it. */
 input,
 select {
   font: inherit;
-  background: var(--surface);
+  background: var(--bg);
   color: var(--text);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
-  padding: 7px 9px;
+  padding: 9px 10px;
+  box-shadow: inset 0 1px 2px #00000040;
+}
+
+input:hover:not(:disabled),
+select:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 
 input::placeholder {

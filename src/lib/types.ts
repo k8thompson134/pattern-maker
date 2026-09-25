@@ -56,7 +56,6 @@ export type Project = {
   heightStitches: number
   fabric: FabricCount
   objects: CanvasObject[]
-  palette: StitchColor[]
   zoom: number
   updatedAt: string
 }
@@ -74,7 +73,6 @@ export function createEmptyProject(name: string): Project {
     heightStitches: 60,
     fabric: DEFAULT_FABRIC,
     objects: [],
-    palette: [],
     zoom: 1,
     updatedAt: new Date().toISOString(),
   }
