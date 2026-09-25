@@ -1,8 +1,5 @@
 import type { Project, StitchColor } from './types'
-import { getFont } from './fonts'
-import { renderTextToCells } from './textRender'
-import { getIcon } from './icons'
-import { renderIconToCells } from './iconRender'
+import { renderObjectCells } from './objectCells'
 
 export type FlattenedCell = { x: number; y: number; color: StitchColor }
 
@@ -25,12 +22,7 @@ export function flattenProject(project: Project): FlattenedCell[] {
       continue
     }
 
-    const cells =
-      obj.kind === 'text'
-        ? renderTextToCells(obj.content, getFont(obj.font), obj.direction, obj.scale)
-        : renderIconToCells(getIcon(obj.iconId), obj.scale)
-
-    for (const c of cells) {
+    for (const c of renderObjectCells(obj)) {
       const x = obj.x + c.dx
       const y = obj.y + c.dy
       grid.set(`${x},${y}`, { x, y, color: obj.color })

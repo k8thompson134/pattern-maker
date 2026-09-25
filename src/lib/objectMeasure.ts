@@ -12,11 +12,12 @@ import { measureIcon } from './iconRender'
 export const MAX_OBJECT_SCALE = 6
 
 export function measureObject(obj: CanvasObject): { width: number; height: number } {
-  if (obj.kind === 'text') {
-    return measureText(obj.content, getFont(obj.font), obj.direction, obj.scale)
-  }
-  if (obj.kind === 'icon') {
-    return measureIcon(getIcon(obj.iconId), obj.scale)
+  if (obj.kind !== 'pixels') {
+    const size =
+      obj.kind === 'text'
+        ? measureText(obj.content, getFont(obj.font), obj.direction, obj.scale)
+        : measureIcon(getIcon(obj.iconId), obj.scale)
+    return isQuarterTurn(obj.rotation) ? { width: size.height, height: size.width } : size
   }
   if (obj.cells.length === 0) return { width: 0, height: 0 }
   const maxDx = Math.max(...obj.cells.map((c) => c.dx))
@@ -33,4 +34,8 @@ export function clampToCanvas<T extends CanvasObject>(
   const maxX = Math.max(0, canvasWidth - width)
   const maxY = Math.max(0, canvasHeight - height)
   return { ...obj, x: Math.min(Math.max(0, obj.x), maxX), y: Math.min(Math.max(0, obj.y), maxY) }
+}
+
+export function isQuarterTurn(rotation: number): boolean {
+  return rotation % 180 !== 0
 }

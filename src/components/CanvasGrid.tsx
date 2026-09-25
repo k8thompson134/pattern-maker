@@ -1,9 +1,6 @@
 import { useRef, useState } from 'react'
 import type { CanvasObject, IconObject, TextObject } from '../lib/types'
-import { getFont } from '../lib/fonts'
-import { renderTextToCells, type FilledCell } from '../lib/textRender'
-import { getIcon } from '../lib/icons'
-import { renderIconToCells } from '../lib/iconRender'
+import { renderObjectCells } from '../lib/objectCells'
 import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
 import { nextSelection, selectionBounds } from '../lib/selection'
@@ -29,13 +26,6 @@ type CanvasGridProps = {
 export const CELL_SIZE = 16
 const HANDLE_SIZE = 24
 const HANDLE_VISIBLE_SIZE = 12
-
-function renderObjectCells(obj: TextObject | IconObject): FilledCell[] {
-  if (obj.kind === 'text') {
-    return renderTextToCells(obj.content, getFont(obj.font), obj.direction, obj.scale)
-  }
-  return renderIconToCells(getIcon(obj.iconId), obj.scale)
-}
 
 const CORNER_HANDLES: CornerHandle[] = ['nw', 'ne', 'sw', 'se']
 
@@ -242,14 +232,6 @@ export function CanvasGrid({
               key={obj.id}
               className={isSelected ? 'canvas-object canvas-object--selected' : 'canvas-object'}
               onPointerDown={(e) => handlePointerDown(e, obj)}
-              style={
-                obj.kind !== 'pixels' && obj.rotation !== 0
-                  ? {
-                      transform: `rotate(${obj.rotation}deg)`,
-                      transformOrigin: `${((effectiveObj.x + hitWidth / 2) * cell).toFixed(0)}px ${((effectiveObj.y + hitHeight / 2) * cell).toFixed(0)}px`,
-                    }
-                  : undefined
-              }
             >
               {/* Invisible hit target covering the object's full bounding box, not just
                   its filled pixels — a touch landing in the gap inside a heart's notch or

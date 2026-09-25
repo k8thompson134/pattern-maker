@@ -36,6 +36,7 @@ function App() {
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
+  const [confirmingNewProject, setConfirmingNewProject] = useState(false)
   const [activeTab, setActiveTab] = useState<ToolTab>('text')
   const isMobile = useIsMobile()
   const [drawMode, setDrawMode] = useState(false)
@@ -276,6 +277,24 @@ function App() {
     }
   }
 
+  // Keeps the object centered where it was — a 90° turn swaps width and height,
+  // and x/y is the top-left of the rotated shape.
+  function rotateSelectedObject(rotation: number) {
+    if (!selectedObject || selectedObject.kind === 'pixels') return
+    const before = measureObject(selectedObject)
+    const after = measureObject({ ...selectedObject, rotation })
+    const patch = {
+      rotation,
+      x: selectedObject.x + Math.floor((before.width - after.width) / 2),
+      y: selectedObject.y + Math.floor((before.height - after.height) / 2),
+    }
+    if (selectedObject.kind === 'text') {
+      updateTextObject(patch)
+    } else {
+      updateIconObject(patch)
+    }
+  }
+
   function alignSelectedObject(alignment: Alignment) {
     if (!selectedObject) return
     setProject((p) => ({
@@ -327,11 +346,18 @@ function App() {
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
   }
 
+  // Erases from the topmost drawing that has a stitch here — any drawing, not just
+  // the one from the current session. A drawing erased down to nothing is removed.
   function erasePixel(gx: number, gy: number) {
-    if (!activePixelObjectId) return
+    const target = [...project.objects]
+      .reverse()
+      .find((o) => o.kind === 'pixels' && o.cells.some((c) => o.x + c.dx === gx && o.y + c.dy === gy))
+    if (!target) return
     setProject((p) => ({
       ...p,
-      objects: p.objects.map((o) => (o.id === activePixelObjectId && o.kind === 'pixels' ? eraseCell(o, gx, gy) : o)),
+      objects: p.objects
+        .map((o) => (o.id === target.id && o.kind === 'pixels' ? eraseCell(o, gx, gy) : o))
+        .filter((o) => o.kind !== 'pixels' || o.cells.length > 0),
       updatedAt: new Date().toISOString(),
     }))
   }
@@ -417,6 +443,23 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasSelection, selectedObjects])
+
+  // Only one project exists and there's no undo, so replacing a non-empty design
+  // asks first — inline, not a browser dialog.
+  function requestNewProject() {
+    if (project.objects.length === 0) {
+      startNewProject()
+    } else {
+      setConfirmingNewProject(true)
+    }
+  }
+
+  function startNewProject() {
+    setProject((p) => ({ ...createEmptyProject('Untitled'), zoom: p.zoom }))
+    setSelectedIds([])
+    setActivePixelObjectId(null)
+    setConfirmingNewProject(false)
+  }
 
   function setZoom(zoom: number) {
     setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
@@ -648,7 +691,7 @@ function App() {
       <aside className="toolbar" ref={toolbarRef}>
         <h2>Tools</h2>
         <div className="button-row">
-          <button type="button" onClick={() => setProject((p) => ({ ...createEmptyProject('Untitled'), zoom: p.zoom }))}>
+          <button type="button" onClick={requestNewProject}>
             New project
           </button>
           <button
@@ -666,6 +709,19 @@ function App() {
             {multiSelect ? 'Done selecting' : 'Select multiple'}
           </button>
         </div>
+        {confirmingNewProject && (
+          <div className="confirm-bar">
+            <p>Start over? Your current design will be deleted — this can't be undone.</p>
+            <div className="button-row">
+              <button type="button" className="danger-btn" onClick={startNewProject}>
+                Delete and start new
+              </button>
+              <button type="button" onClick={() => setConfirmingNewProject(false)}>
+                Keep editing
+              </button>
+            </div>
+          </div>
+        )}
 
         {selectedObject && (
           <div className="tool-section selected-panel" ref={selectedPanelRef}>
@@ -773,11 +829,7 @@ function App() {
                         key={angle}
                         type="button"
                         className={`toggle-btn${selectedObject.rotation === angle ? ' toggle-btn--active' : ''}`}
-                        onClick={() =>
-                          selectedObject.kind === 'text'
-                            ? updateTextObject({ rotation: angle })
-                            : updateIconObject({ rotation: angle })
-                        }
+                        onClick={() => rotateSelectedObject(angle)}
                       >
                         {angle}°
                       </button>

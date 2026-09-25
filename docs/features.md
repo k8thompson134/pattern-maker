@@ -39,6 +39,7 @@ These rules explain most of the behavior (and most of the limits) below.
   covered stitches don't appear and aren't counted.
 - **Text and icons are single-color.** A two-tone motif has to be built as
   two overlapping objects or as a drawing.
+- **Rotation turns the actual stitches** in 90° steps. What you see is exactly what exports.
 - **Size is whole-number scaling.** At size 2×, every stitch of a letter or
   icon becomes a 2×2 block; 3× gives 3×3, up to 6×. There are no in-between
   sizes, because a fraction of a stitch can't be stitched.
@@ -55,7 +56,7 @@ These rules explain most of the behavior (and most of the limits) below.
 | Fabric count | Stitches per inch, 1 to 30 (e.g. 14 for 14-count Aida). Used only to show the finished size in inches. |
 | Finished size | Shown above the canvas, e.g. `60×60 stitches · 5.5"×5.5" at 11 stitches/inch`. This is the stitched area only, with no margin for framing or finishing. |
 | Zoom | 20% to 250% in 25% steps. On first load, a small screen zooms out to fit. |
-| New project | Starts a blank 60×60 canvas. **Replaces the current project immediately with no confirmation.** Only one project exists at a time. |
+| New project | Starts a blank 60×60 canvas. If the current design has anything on it, an inline warning asks you to confirm first ("Delete and start new" / "Keep editing"). Only one project exists at a time. |
 | Project name | Not editable in the UI. The name is set only as the PDF title at export time. |
 
 ### 3.2 Text
@@ -96,7 +97,7 @@ or delete afterward.
 | Feature | Details |
 | --- | --- |
 | Paint | Tap a cell to place a stitch in the chosen color. Different colors can be mixed in one drawing. |
-| Erase | Removes stitches, but **only from the drawing started in the current session**. It can't remove stitches from earlier drawings, text, or icons. |
+| Erase | Removes a stitch from whichever drawing is on top at that spot, including drawings from earlier sessions. A drawing erased down to nothing disappears. Erase can't remove stitches from text or icons. |
 | Input | One tap per stitch. There's no drag-to-paint, line, rectangle, fill, or mirror tool. |
 | Sessions | Each Start drawing → Done drawing session creates one new drawing object. An earlier drawing can't be reopened to add to it. |
 | After drawing | A drawing can be moved, duplicated, layered, aligned, and grouped. It can't be resized, rotated, recolored as a whole, or repeated. |
@@ -108,7 +109,7 @@ or delete afterward.
 | Select | Tap or click an object. A dashed box and corner handles appear. |
 | Move | Drag, the on-screen arrow pad (1 stitch per tap), or the keyboard arrow keys (Shift+arrow = 5 stitches). Objects can't leave the canvas. |
 | Resize | Drag a corner handle, or use the − / + size buttons (text and icons only). |
-| Rotate | 0°, 90°, 180°, 270° (text and icons). **See the rotation bug in section 5.** |
+| Rotate | 0°, 90°, 180°, 270° clockwise (text and icons). The object turns in place, around its center. The rotated shape is what's stitched and exported. |
 | Align | To the canvas: left, center, right, top, middle, bottom. |
 | Layer order | Send backward, bring forward, send to back, bring to front. |
 | Duplicate | Places a copy just to the right. |
@@ -183,13 +184,14 @@ pressing New project can't be reversed.
 
 | Issue | Effect on a stitcher |
 | --- | --- |
-| **Rotation isn't in the export.** Rotating a text or icon only changes how it's drawn on screen. The PDF, stitch counts, alignment, and canvas edge limits all use the unrotated shape. | A rotated object prints unrotated in the chart, so what you stitch won't match what you designed. The bigger the object, the worse it gets. |
-| New project has no confirmation. | One mis-tap loses the whole design, with no undo. |
 | Unsupported characters become blanks silently. | A name with an accent or an `&` loses letters with no warning. |
-| Erase only works within the current drawing session. | Can't clean up a stray stitch in an earlier drawing or trim part of a letter. |
 | The PDF title uses a browser pop-up. | Minor, but it goes against the "no modals" design goal. |
 
----
+### Fixed
+
+- **Rotation now reaches the export.** It used to change only the on-screen drawing, so rotated text and icons printed unrotated in the PDF, and alignment and canvas-edge limits used the wrong size. Rotation now changes the stitches themselves: the screen, PDF, stitch counts, alignment, and edge limits all match. Designs saved before this fix that used 90° or 270° may appear shifted by a few stitches, so check their position.
+- **New project asks first** when the current design isn't empty.
+- **Erase works on any drawing**, not just the one being drawn in the current session.
 
 ## 6. Gap analysis: what a cross-stitcher would expect
 
@@ -212,7 +214,6 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | One page, scaled to fit | A 100×100+ design becomes unreadably tiny. Real charts split across pages with overlap and page labels. | **High** for larger designs | |
 | No thread/skein estimate | Stitchers need to know how many skeins to buy. The stitch counts are already there, so it's close. | Medium | |
 | No fabric cutting size | Charts usually say how big to cut the fabric (design + 2–3" margin per side for framing). | Medium | |
-| Chart doesn't reflect rotation | See section 5. | **High** (correctness) | |
 | No designer name/date/notes on the PDF | Wanted for gifts and for selling patterns. | Low | ✱ (optional metadata) |
 
 ### 6.2 Threads and colors
@@ -259,7 +260,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
 | No undo/redo | Mistakes are permanent; this discourages experimenting. | **High** | ✱ (v1.1) |
-| Erase can't touch text, icons, or older drawings | Stitchers often tweak a single stitch of a letter or motif. | Medium | |
+| Erase can't touch text or icons | Stitchers often tweak a single stitch of a letter or motif. | Medium | |
 | Can't reopen an earlier drawing | Adding to a drawing later makes a new, separate object. | Medium | |
 | Tap-one-stitch-at-a-time drawing | Slow for anything but tiny touches. Drag-to-paint, lines, fill, and mirror are standard in pixel/grid editors. | Medium | |
 | Can't turn text or an icon into editable stitches | Would allow customizing a letter or motif stitch by stitch. | Medium | |
@@ -279,7 +280,6 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
 | Only one project at a time | Can't keep several designs (a series of fundraiser pieces) side by side. | **High** | |
-| New project deletes without asking | Easy to lose work (section 5). | **High** | |
 | No save/open file | Can't back up a design, move it to another device, or send it to the person who'll stitch it. | Medium | ✱ (export-to-file, shareable layouts) |
 | No PNG/image export | Quick preview to share on social media or with a gift recipient. | Low | ✱ (open question) |
 | No stitched-look preview | Seeing the design as stitched Xs on fabric color helps judge contrast. | Low | |
@@ -290,10 +290,9 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 If the goal is "a stitcher can reliably stitch from what they design," the
 highest-leverage next steps are:
 
-1. **Fix the rotation export bug.** The chart doesn't match the screen.
-2. **Chart readability:** symbols per color, a darker line every 10 stitches, center marks, and multi-page export for larger designs.
-3. **Safety:** undo/redo and a confirmation on New project.
-4. **Full DMC palette.**
-5. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style (script or serif).
-6. **Borders** (task #518) and **multi-color motifs.**
-7. **Multiple saved projects** plus save/open files.
+1. **Chart readability:** symbols per color, a darker line every 10 stitches, center marks, and multi-page export for larger designs.
+2. **Undo/redo.**
+3. **Full DMC palette.**
+4. **Lettering:** lowercase, the missing punctuation (`& : / #`), a warning for characters that can't be stitched, and at least one more font style (script or serif).
+5. **Borders** (task #518) and **multi-color motifs.**
+6. **Multiple saved projects** plus save/open files.

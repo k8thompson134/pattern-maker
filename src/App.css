@@ -304,6 +304,26 @@ details.tool-section > summary:hover {
   border-color: var(--danger-bg);
 }
 
+.confirm-bar {
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.confirm-bar p {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.confirm-bar .danger-btn {
+  margin-top: 0;
+}
+
 .danger-btn:hover {
   background: #ff7b7b33;
   border-color: var(--danger);
