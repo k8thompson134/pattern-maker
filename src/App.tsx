@@ -6,7 +6,7 @@ import { createEmptyProject, type IconObject, type TextDirection, type TextObjec
 import { loadProject, saveProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
-import { measureText } from './lib/textRender'
+import { measureText, unsupportedChars } from './lib/textRender'
 import { ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
@@ -14,6 +14,7 @@ import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
+import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
 import { useIsMobile } from './useIsMobile'
 import './App.css'
@@ -53,12 +54,26 @@ function App() {
   const selectedPanelRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLElement>(null)
   const canvasAreaRef = useRef<HTMLElement>(null)
+  const isFirstProjectRender = useRef(true)
 
   const hasSelection = selectedIds.length > 0
+  const [showBackupNudge, setShowBackupNudge] = useState(false)
 
   useEffect(() => {
     setSaveError(!saveProject(project))
+    // The initial load isn't an edit — only count changes made in this session.
+    if (isFirstProjectRender.current) {
+      isFirstProjectRender.current = false
+    } else {
+      recordEdit()
+      setShowBackupNudge(shouldShowBackupNudge())
+    }
   }, [project])
+
+  function dismissBackupNudge() {
+    acknowledgeBackup()
+    setShowBackupNudge(false)
+  }
 
   // Selecting an object jumps the sidebar to the Selected panel (rendered at
   // the top) instead of leaving the user to scroll down and hunt for it —
@@ -565,6 +580,9 @@ function App() {
       />
     </>
   )
+  const draftFont = getFont(draftFontId)
+  const draftUnsupported = unsupportedChars(draftText, draftFont)
+  const draftSize = measureText(draftText, draftFont, 'horizontal', 1)
   const textBody = (
     <>
       <input
@@ -573,6 +591,17 @@ function App() {
         onChange={(e) => setDraftText(e.target.value)}
         placeholder="Type a phrase"
       />
+      {draftUnsupported.length > 0 && (
+        <p className="text-warning">
+          {draftUnsupported.map((c) => `"${c}"`).join(', ')} {draftUnsupported.length === 1 ? "isn't" : "aren't"}{' '}
+          supported yet and will be skipped.
+        </p>
+      )}
+      {draftText && (
+        <p className="tool-placeholder">
+          {draftSize.width}×{draftSize.height} stitches at 1×
+        </p>
+      )}
       <select value={draftFontId} onChange={(e) => setDraftFontId(e.target.value)}>
         {AVAILABLE_FONTS.map((f) => (
           <option key={f.id} value={f.id}>
@@ -700,6 +729,8 @@ function App() {
               const title = window.prompt('PDF Title:', project.name || '')
               if (title !== null) {
                 exportProjectToPdf(project, title || undefined)
+                acknowledgeBackup()
+                setShowBackupNudge(false)
               }
             }}
           >
@@ -753,6 +784,26 @@ function App() {
                   onChange={(e) => updateTextObject({ content: e.target.value })}
                   placeholder="Edit text..."
                 />
+                {(() => {
+                  const font = getFont(selectedObject.font)
+                  const unsupported = unsupportedChars(selectedObject.content, font)
+                  const size = measureText(selectedObject.content, font, selectedObject.direction, selectedObject.scale)
+                  return (
+                    <>
+                      {unsupported.length > 0 && (
+                        <p className="text-warning">
+                          {unsupported.map((c) => `"${c}"`).join(', ')} {unsupported.length === 1 ? "isn't" : "aren't"}{' '}
+                          supported yet and will be skipped.
+                        </p>
+                      )}
+                      <p className="tool-placeholder">
+                        {size.width}×{size.height} stitches
+                        {(size.width > project.widthStitches || size.height > project.heightStitches) &&
+                          ' — larger than the canvas'}
+                      </p>
+                    </>
+                  )
+                })()}
 
                 <label className="field-label">Direction</label>
                 <div className="button-row">
@@ -987,6 +1038,14 @@ function App() {
         {loadCorrupted && (
           <p className="save-banner save-banner--warning">
             Your last saved project couldn't be read and had to be reset. Starting a new one.
+          </p>
+        )}
+        {showBackupNudge && (
+          <p className="save-banner save-banner--info">
+            Your design only lives in this browser. Consider exporting a PDF as a backup.{' '}
+            <button type="button" className="save-banner__dismiss" onClick={dismissBackupNudge}>
+              Dismiss
+            </button>
           </p>
         )}
         <div className="canvas-meta">

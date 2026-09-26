@@ -54,3 +54,16 @@ export function measureText(
   const height = (length * font.cellHeight + (length - 1) * LETTER_SPACING) * scale
   return { width: font.cellWidth * scale, height }
 }
+
+// Characters the font has no glyph for (case-insensitive, space always supported).
+// These get silently rendered as blanks by renderTextToCells — callers use this to
+// warn before that happens instead of after.
+export function unsupportedChars(text: string, font: BitmapFont): string[] {
+  const seen = new Set<string>()
+  for (const rawChar of text) {
+    if (rawChar === ' ') continue
+    const supported = !!font.glyphs[rawChar] || !!font.glyphs[rawChar.toUpperCase()]
+    if (!supported) seen.add(rawChar)
+  }
+  return [...seen]
+}

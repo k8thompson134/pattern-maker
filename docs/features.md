@@ -64,7 +64,7 @@ These rules explain most of the behavior (and most of the limits) below.
 | Feature | Details |
 | --- | --- |
 | Fonts | **Block 5×7** (7 stitches tall) and **Tiny 3×5** (5 stitches tall). |
-| Characters | A–Z, 0–9, space, and `. , ! ? ' -`. Lowercase is typed fine but stitched as capitals. **Any other character (accents, `&`, `@`, `:` …) silently becomes a blank space.** |
+| Characters | A–Z, 0–9, space, and `. , ! ? ' -`. Lowercase is typed fine but stitched as capitals. Any other character (accents, `&`, `@`, `:` …) becomes a blank space, but a red warning names the exact unsupported characters as you type, both in the Text tool and when editing a placed text object. |
 | Direction | Across (left to right) or Down (letters stacked vertically). |
 | Editing | The words, direction, and color can be changed after placing. The font cannot be changed after placing. |
 | Size | 1× to 6×. See section 2. |
@@ -144,6 +144,8 @@ not to a multi-selection or group.
 ### 3.9 Saving
 
 - The current project autosaves to this browser after every change, including zoom.
+- Every text field shows the stitch size live as you type (e.g. `41×7 stitches`), and a placed text object's editing panel warns if it's now larger than the canvas.
+- After 25 edits without a PDF export, a dismissible banner above the canvas suggests backing up. Exporting or dismissing resets the count.
 - If saving fails (e.g. browser storage is full), a red banner warns you.
 - If the saved project can't be read back, a banner says so and a new project starts.
 - There is only one project, stored in one browser. There's no file to save, open, or share, and nothing syncs between devices.
@@ -184,10 +186,13 @@ pressing New project can't be reversed.
 
 | Issue | Effect on a stitcher |
 | --- | --- |
-| Unsupported characters become blanks silently. | A name with an accent or an `&` loses letters with no warning. |
 | The PDF title uses a browser pop-up. | Minor, but it goes against the "no modals" design goal. |
 
 ### Fixed
+
+- **Unsupported characters now warn as you type**, instead of silently becoming blanks. The text tool and the editing panel for a placed text object both show which exact characters (e.g. `&`, `é`) aren't supported and will be skipped.
+- **Live stitch-size preview** while typing or editing text, so an oversized phrase is visible before it's placed rather than after.
+- **A backup-reminder banner** appears after 25 edits with no PDF export, since the design lives only in this browser with no file save yet.
 
 - **Rotation now reaches the export.** It used to change only the on-screen drawing, so rotated text and icons printed unrotated in the PDF, and alignment and canvas-edge limits used the wrong size. Rotation now changes the stitches themselves: the screen, PDF, stitch counts, alignment, and edge limits all match. Designs saved before this fix that used 90° or 270° may appear shifted by a few stitches, so check their position.
 - **New project asks first** when the current design isn't empty.
@@ -261,6 +266,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | --- | --- | --- | --- |
 | No undo/redo | Mistakes are permanent; this discourages experimenting. | **High** | ✱ (v1.1) |
 | Erase can't touch text or icons | Stitchers often tweak a single stitch of a letter or motif. | Medium | |
+| No "save as" / duplicate whole project | Design one layout, then make variants (same text, different recipient) without retyping everything. Task #543. | Medium | |
 | Can't reopen an earlier drawing | Adding to a drawing later makes a new, separate object. | Medium | |
 | Tap-one-stitch-at-a-time drawing | Slow for anything but tiny touches. Drag-to-paint, lines, fill, and mirror are standard in pixel/grid editors. | Medium | |
 | Can't turn text or an icon into editable stitches | Would allow customizing a letter or motif stitch by stitch. | Medium | |
@@ -290,9 +296,9 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 If the goal is "a stitcher can reliably stitch from what they design," the
 highest-leverage next steps are:
 
-1. **Chart readability:** symbols per color, a darker line every 10 stitches, center marks, and multi-page export for larger designs.
-2. **Undo/redo.**
-3. **Full DMC palette.**
-4. **Lettering:** lowercase, the missing punctuation (`& : / #`), a warning for characters that can't be stitched, and at least one more font style (script or serif).
-5. **Borders** (task #518) and **multi-color motifs.**
-6. **Multiple saved projects** plus save/open files.
+1. **Chart readability:** symbols per color (#539), a darker line every 10 stitches and center marks (#540), and multi-page export for larger designs (#541).
+2. **Undo/redo** (#542).
+3. **Full DMC palette**, plus recolor-everywhere (#544).
+4. **Save-as / duplicate project** (#543), to unblock making variants of one layout.
+5. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
+6. **Borders** (#518) and **multi-color motifs.**

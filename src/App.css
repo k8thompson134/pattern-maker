@@ -43,6 +43,12 @@
   font-size: 0.85rem;
 }
 
+.text-warning {
+  color: var(--danger);
+  font-size: 0.78rem;
+  margin: 0;
+}
+
 /* Card treatment shared by collapsible <details> tool sections and the
    always-open Selected-object panel (a plain div, not <details>). */
 .tool-section {
@@ -487,6 +493,21 @@ details.tool-section > summary:hover {
 .save-banner--warning {
   background: var(--accent-bg);
   color: var(--accent-strong);
+}
+
+.save-banner--info {
+  background: var(--surface-2);
+  color: var(--text-dim);
+}
+
+.save-banner__dismiss {
+  display: inline;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  text-decoration: underline;
+  font-size: inherit;
 }
 
 .canvas-meta {

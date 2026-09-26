@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { measureText, renderTextToCells } from './textRender'
+import { measureText, renderTextToCells, unsupportedChars } from './textRender'
 import { FONT_BLOCK_5X7 } from './fonts'
 
 describe('renderTextToCells', () => {
@@ -78,5 +78,19 @@ describe('measureText', () => {
     const at2x = measureText('HI', FONT_BLOCK_5X7, 'horizontal', 2)
     expect(at2x.width).toBe(at1x.width * 2)
     expect(at2x.height).toBe(at1x.height * 2)
+  })
+})
+
+describe('unsupportedChars', () => {
+  it('returns nothing for a fully-supported phrase', () => {
+    expect(unsupportedChars('Hello, World! 123', FONT_BLOCK_5X7)).toEqual([])
+  })
+
+  it('is case-insensitive', () => {
+    expect(unsupportedChars('hello', FONT_BLOCK_5X7)).toEqual([])
+  })
+
+  it('flags characters with no glyph, deduplicated', () => {
+    expect(unsupportedChars('J & J & é', FONT_BLOCK_5X7).sort()).toEqual(['&', 'é'].sort())
   })
 })
