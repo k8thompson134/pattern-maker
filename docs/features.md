@@ -144,6 +144,7 @@ not to a multi-selection or group.
 ### 3.9 Saving
 
 - The current project autosaves to this browser after every change, including zoom.
+- Multiple designs can exist side by side: **Save as…** copies the current design into a new named slot and switches you to editing that copy, leaving the original untouched. A **Design** dropdown appears once there's more than one, to switch between them. **Delete this design** removes the one you're viewing and switches to another saved one (or a fresh blank project if it was the last).
 - Every text field shows the stitch size live as you type (e.g. `41×7 stitches`), and a placed text object's editing panel warns if it's now larger than the canvas.
 - After 25 edits without a PDF export, a dismissible banner above the canvas suggests backing up. Exporting or dismissing resets the count.
 - If saving fails (e.g. browser storage is full), a red banner warns you.
@@ -192,7 +193,8 @@ pressing New project can't be reversed.
 
 - **Unsupported characters now warn as you type**, instead of silently becoming blanks. The text tool and the editing panel for a placed text object both show which exact characters (e.g. `&`, `é`) aren't supported and will be skipped.
 - **Live stitch-size preview** while typing or editing text, so an oversized phrase is visible before it's placed rather than after.
-- **A backup-reminder banner** appears after 25 edits with no PDF export, since the design lives only in this browser with no file save yet.
+- **A backup-reminder banner** appears after 25 edits with no PDF export, since designs live only in this browser with no file export/import yet.
+- **Save as / duplicate a whole project**, to make variants of one layout (same text, different recipient) without retyping everything.
 
 - **Rotation now reaches the export.** It used to change only the on-screen drawing, so rotated text and icons printed unrotated in the PDF, and alignment and canvas-edge limits used the wrong size. Rotation now changes the stitches themselves: the screen, PDF, stitch counts, alignment, and edge limits all match. Designs saved before this fix that used 90° or 270° may appear shifted by a few stitches, so check their position.
 - **New project asks first** when the current design isn't empty.
@@ -266,7 +268,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | --- | --- | --- | --- |
 | No undo/redo | Mistakes are permanent; this discourages experimenting. | **High** | ✱ (v1.1) |
 | Erase can't touch text or icons | Stitchers often tweak a single stitch of a letter or motif. | Medium | |
-| No "save as" / duplicate whole project | Design one layout, then make variants (same text, different recipient) without retyping everything. Task #543. | Medium | |
+| ~~No "save as" / duplicate whole project~~ | ~~Fixed — task #543, see section 5.~~ | Fixed | |
 | Can't reopen an earlier drawing | Adding to a drawing later makes a new, separate object. | Medium | |
 | Tap-one-stitch-at-a-time drawing | Slow for anything but tiny touches. Drag-to-paint, lines, fill, and mirror are standard in pixel/grid editors. | Medium | |
 | Can't turn text or an icon into editable stitches | Would allow customizing a letter or motif stitch by stitch. | Medium | |
@@ -299,6 +301,7 @@ highest-leverage next steps are:
 1. **Chart readability:** symbols per color (#539), a darker line every 10 stitches and center marks (#540), and multi-page export for larger designs (#541).
 2. **Undo/redo** (#542).
 3. **Full DMC palette**, plus recolor-everywhere (#544).
-4. **Save-as / duplicate project** (#543), to unblock making variants of one layout.
-5. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
+4. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
+
+~~Save-as / duplicate project (#543)~~ — done, see section 5.
 6. **Borders** (#518) and **multi-color motifs.**

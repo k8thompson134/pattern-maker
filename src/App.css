@@ -80,6 +80,15 @@ details.tool-section::details-content {
   margin-bottom: var(--space-4);
 }
 
+.project-switcher {
+  margin-bottom: var(--space-4);
+}
+
+.project-switcher label {
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
 .tool-section:first-of-type {
   margin-top: 0;
 }

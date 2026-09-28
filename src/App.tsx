@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { IconThumb } from './components/IconThumb'
-import { createEmptyProject, type IconObject, type TextDirection, type TextObject } from './lib/types'
-import { loadProject, saveProject } from './lib/storage'
+import { createEmptyProject, type IconObject, type Project, type TextDirection, type TextObject } from './lib/types'
+import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { measureText, unsupportedChars } from './lib/textRender'
@@ -38,6 +38,8 @@ function App() {
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
   const [confirmingNewProject, setConfirmingNewProject] = useState(false)
+  const [confirmingDeleteProject, setConfirmingDeleteProject] = useState(false)
+  const [projectList, setProjectList] = useState(() => listProjects())
   const [activeTab, setActiveTab] = useState<ToolTab>('text')
   const isMobile = useIsMobile()
   const [drawMode, setDrawMode] = useState(false)
@@ -61,6 +63,7 @@ function App() {
 
   useEffect(() => {
     setSaveError(!saveProject(project))
+    setProjectList(listProjects())
     // The initial load isn't an edit — only count changes made in this session.
     if (isFirstProjectRender.current) {
       isFirstProjectRender.current = false
@@ -469,11 +472,56 @@ function App() {
     }
   }
 
-  function startNewProject() {
-    setProject((p) => ({ ...createEmptyProject('Untitled'), zoom: p.zoom }))
+  // Shared by everything that replaces the whole project wholesale (new/switch/
+  // save-as) — otherwise each call site risks forgetting one of these resets,
+  // like the width/height/SPI inputs silently keeping the old project's values.
+  function swapProject(next: Project) {
+    setProject(next)
     setSelectedIds([])
     setActivePixelObjectId(null)
     setConfirmingNewProject(false)
+    setConfirmingDeleteProject(false)
+    setDrawMode(false)
+    setStampMode(false)
+    setMultiSelect(false)
+    setWidthInput(String(next.widthStitches))
+    setHeightInput(String(next.heightStitches))
+    setSpiInput(String(next.fabric.stitchesPerInch))
+  }
+
+  function startNewProject() {
+    swapProject({ ...createEmptyProject('Untitled'), zoom: project.zoom })
+  }
+
+  // "Save as": copies the current design into a new slot under a new name and
+  // switches to editing that copy, leaving the original untouched — the
+  // variants-for-a-second-recipient workflow from docs/features.md.
+  function saveProjectAs() {
+    const name = window.prompt('Save a copy as:', `${project.name} copy`)
+    if (!name) return
+    const copy = duplicateProject(project, name)
+    setProjectList(listProjects())
+    swapProject(copy)
+  }
+
+  function switchProject(id: string) {
+    if (id === project.id) return
+    const target = projectList.find((p) => p.id === id)
+    if (!target) return
+    setActiveProject(id)
+    swapProject(target)
+  }
+
+  function deleteCurrentProject() {
+    const remaining = projectList.filter((p) => p.id !== project.id)
+    deleteProject(project.id)
+    setConfirmingDeleteProject(false)
+    if (remaining.length > 0) {
+      setActiveProject(remaining[0].id)
+      swapProject(remaining[0])
+    } else {
+      swapProject(createEmptyProject('Untitled'))
+    }
   }
 
   function setZoom(zoom: number) {
@@ -719,9 +767,24 @@ function App() {
     <div className="app-shell">
       <aside className="toolbar" ref={toolbarRef}>
         <h2>Tools</h2>
+        {projectList.length > 1 && (
+          <div className="tool-section project-switcher">
+            <label htmlFor="project-select">Design</label>
+            <select id="project-select" value={project.id} onChange={(e) => switchProject(e.target.value)}>
+              {projectList.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className="button-row">
           <button type="button" onClick={requestNewProject}>
             New project
+          </button>
+          <button type="button" onClick={saveProjectAs}>
+            Save as…
           </button>
           <button
             type="button"
@@ -740,6 +803,26 @@ function App() {
             {multiSelect ? 'Done selecting' : 'Select multiple'}
           </button>
         </div>
+        {projectList.length > 1 && (
+          <div className="button-row">
+            <button type="button" className="danger-btn" onClick={() => setConfirmingDeleteProject(true)}>
+              Delete this design
+            </button>
+          </div>
+        )}
+        {confirmingDeleteProject && (
+          <div className="confirm-bar">
+            <p>Delete "{project.name}"? This can't be undone.</p>
+            <div className="button-row">
+              <button type="button" className="danger-btn" onClick={deleteCurrentProject}>
+                Delete
+              </button>
+              <button type="button" onClick={() => setConfirmingDeleteProject(false)}>
+                Keep it
+              </button>
+            </div>
+          </div>
+        )}
         {confirmingNewProject && (
           <div className="confirm-bar">
             <p>Start over? Your current design will be deleted — this can't be undone.</p>
