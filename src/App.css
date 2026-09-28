@@ -210,6 +210,11 @@ details.tool-section > summary:hover {
 
 .palette-list .swatch {
   cursor: default;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 600;
 }
 
 .selected-panel {
@@ -456,6 +461,13 @@ details.tool-section > summary:hover {
   line-height: 1;
 }
 
+.zoom-controls .symbols-toggle {
+  width: auto;
+  padding: 0 var(--space-2);
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
 .canvas-object {
   cursor: grab;
 }
@@ -545,6 +557,10 @@ details.tool-section > summary:hover {
   stroke: #00000014;
   stroke-width: 1;
   pointer-events: none;
+}
+
+.canvas-grid__lines line.major {
+  stroke: #00000050;
 }
 
 .canvas-object,

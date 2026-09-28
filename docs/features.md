@@ -136,9 +136,10 @@ not to a multi-selection or group.
 - A4 page, portrait or landscape to match the design's shape.
 - Title (prompted at export time), stitch dimensions, and finished size in inches.
 - The whole grid fits on **one page**, scaled to fit, not at actual size.
-- Stitches are shown as **filled color squares**, with no chart symbols.
-- Grid lines are all the same thin light gray. There are no darker lines every 10 stitches, no row/column numbers, and no center marks.
-- Legend: each DMC color with a swatch, name, and stitch count.
+- Every color gets its own **symbol** (drawn inside each colored square, in black or white for contrast), so similar colors can be told apart and a black-and-white printout still works. The same symbols show on the canvas (toggle: "Symbols on/off") and in the palette panel.
+- A **heavier line every 10 stitches**, with the stitch number at each one along the top and left edges, and **center arrows** on each edge marking the middle column and row.
+- Designs that would need cells smaller than 2.5 mm to fit are split across **multiple pages** (4 mm cells, page breaks on the 10-stitch lines, absolute row/column numbers on every page). A leading overview page shows the whole design with page numbers. Pages with no stitches are skipped.
+- Legend: each DMC color with its symbol swatch, name, and stitch count.
 - Nothing is added to the export that you didn't ask for: no watermarks or branding.
 
 ### 3.9 Saving
@@ -197,6 +198,7 @@ pressing New project can't be reversed.
 - **Save as / duplicate a whole project**, to make variants of one layout (same text, different recipient) without retyping everything.
 - **Undo/redo**, via toolbar buttons or Ctrl/Cmd+Z (Ctrl/Cmd+Shift+Z or Ctrl+Y to redo). Rapid edits to the same field (typing into a placed text object's content) merge into one undo step; view-only changes like zoom never appear in the history at all. Switching, duplicating, or starting a project begins a fresh undo history for it.
 
+- **Chart readability.** The PDF puts a distinct symbol in every colored square (also shown on the canvas and in the palette, with a Symbols on/off toggle), draws a heavier line every 10 stitches with stitch numbers along the edges, and marks the center column and row with arrows. Large designs split across multiple pages with an overview page instead of shrinking to unreadable.
 - **Rotation now reaches the export.** It used to change only the on-screen drawing, so rotated text and icons printed unrotated in the PDF, and alignment and canvas-edge limits used the wrong size. Rotation now changes the stitches themselves: the screen, PDF, stitch counts, alignment, and edge limits all match. Designs saved before this fix that used 90° or 270° may appear shifted by a few stitches, so check their position.
 - **New project asks first** when the current design isn't empty.
 - **Erase works on any drawing**, not just the one being drawn in the current session.
@@ -216,10 +218,10 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| No chart symbols (colored squares only) | Standard charts put a symbol in each cell so similar colors can be told apart and a black-and-white printout still works. Red 321 vs. Bright Red 666 look nearly identical on paper. | **High** | ✱ ("symbol key") |
-| No darker line every 10 stitches | Every stitcher counts in 10s. Without heavier gridlines, counting across a large chart is slow and error-prone. | **High** | |
-| No center marks or row/column numbers | Stitchers usually start from the center of the fabric. Without arrows or numbers, finding it means counting by hand. | **High** | |
-| One page, scaled to fit | A 100×100+ design becomes unreadably tiny. Real charts split across pages with overlap and page labels. | **High** for larger designs | |
+| ~~No chart symbols~~ | ~~Fixed, see section 5.~~ | Fixed | |
+| ~~No darker line every 10 stitches~~ | ~~Fixed, see section 5.~~ | Fixed | |
+| ~~No center marks or row/column numbers~~ | ~~Fixed, see section 5.~~ | Fixed | |
+| ~~One page, scaled to fit~~ | ~~Fixed, see section 5. Pages split on the 10-stitch lines with absolute numbers rather than overlap.~~ | Fixed | |
 | No thread/skein estimate | Stitchers need to know how many skeins to buy. The stitch counts are already there, so it's close. | Medium | |
 | No fabric cutting size | Charts usually say how big to cut the fabric (design + 2–3" margin per side for framing). | Medium | |
 | No designer name/date/notes on the PDF | Wanted for gifts and for selling patterns. | Low | ✱ (optional metadata) |
@@ -299,7 +301,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 If the goal is "a stitcher can reliably stitch from what they design," the
 highest-leverage next steps are:
 
-1. **Chart readability:** symbols per color (#539), a darker line every 10 stitches and center marks (#540), and multi-page export for larger designs (#541).
+1. ~~**Chart readability**~~ (symbols, heavier 10-stitch lines, center marks, multi-page export). Done.
 2. **Full DMC palette**, plus recolor-everywhere (#544).
 3. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
 

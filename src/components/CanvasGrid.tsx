@@ -4,6 +4,7 @@ import { renderObjectCells } from '../lib/objectCells'
 import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
 import { nextSelection, selectionBounds } from '../lib/selection'
+import { symbolTextIsBlack } from '../lib/chartLayout'
 
 type CanvasGridProps = {
   widthStitches: number
@@ -21,6 +22,8 @@ type CanvasGridProps = {
   onEraseCell: (gx: number, gy: number) => void
   stampMode: boolean
   onStamp: (gx: number, gy: number) => void
+  symbols: Map<string, string>
+  showSymbols: boolean
 }
 
 export const CELL_SIZE = 16
@@ -45,11 +48,43 @@ export function CanvasGrid({
   onEraseCell,
   stampMode,
   onStamp,
+  symbols,
+  showSymbols,
 }: CanvasGridProps) {
   const cell = CELL_SIZE * zoom
   const pixelWidth = widthStitches * cell
   const pixelHeight = heightStitches * cell
   const svgRef = useRef<SVGSVGElement | null>(null)
+  const drawSymbols = showSymbols && cell >= 8
+
+  function stitchRect(key: number, x: number, y: number, color: { hex: string; dmcCode: string }, isSelected: boolean) {
+    return (
+      <g key={key}>
+        <rect
+          x={x * cell}
+          y={y * cell}
+          width={cell}
+          height={cell}
+          fill={color.hex}
+          stroke={isSelected ? '#646cff' : undefined}
+          strokeWidth={isSelected ? 1 : undefined}
+        />
+        {drawSymbols && (
+          <text
+            x={x * cell + cell / 2}
+            y={y * cell + cell / 2}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={cell * (symbols.get(color.dmcCode)?.length === 2 ? 0.45 : 0.65)}
+            fill={symbolTextIsBlack(color.hex) ? '#000' : '#fff'}
+            style={{ pointerEvents: 'none', userSelect: 'none' }}
+          >
+            {symbols.get(color.dmcCode)}
+          </text>
+        )}
+      </g>
+    )
+  }
 
   const dragRef = useRef<{
     ids: string[]
@@ -94,10 +129,10 @@ export function CanvasGrid({
 
   const lines: React.ReactNode[] = []
   for (let x = 0; x <= widthStitches; x++) {
-    lines.push(<line key={`v${x}`} x1={x * cell} y1={0} x2={x * cell} y2={pixelHeight} />)
+    lines.push(<line key={`v${x}`} className={x % 10 === 0 ? 'major' : undefined} x1={x * cell} y1={0} x2={x * cell} y2={pixelHeight} />)
   }
   for (let y = 0; y <= heightStitches; y++) {
-    lines.push(<line key={`h${y}`} x1={0} y1={y * cell} x2={pixelWidth} y2={y * cell} />)
+    lines.push(<line key={`h${y}`} className={y % 10 === 0 ? 'major' : undefined} x1={0} y1={y * cell} x2={pixelWidth} y2={y * cell} />)
   }
 
   function handlePointerDown(e: React.PointerEvent, obj: CanvasObject) {
@@ -245,30 +280,12 @@ export function CanvasGrid({
                 fill="transparent"
               />
               {effectiveObj.kind === 'pixels'
-                ? effectiveObj.cells.map((c, i) => (
-                    <rect
-                      key={i}
-                      x={(effectiveObj.x + c.dx) * cell}
-                      y={(effectiveObj.y + c.dy) * cell}
-                      width={cell}
-                      height={cell}
-                      fill={c.color.hex}
-                      stroke={isSelected ? '#646cff' : undefined}
-                      strokeWidth={isSelected ? 1 : undefined}
-                    />
-                  ))
-                : renderObjectCells(effectiveObj).map((c, i) => (
-                    <rect
-                      key={i}
-                      x={(effectiveObj.x + c.dx) * cell}
-                      y={(effectiveObj.y + c.dy) * cell}
-                      width={cell}
-                      height={cell}
-                      fill={effectiveObj.color.hex}
-                      stroke={isSelected ? '#646cff' : undefined}
-                      strokeWidth={isSelected ? 1 : undefined}
-                    />
-                  ))}
+                ? effectiveObj.cells.map((c, i) =>
+                    stitchRect(i, effectiveObj.x + c.dx, effectiveObj.y + c.dy, c.color, isSelected),
+                  )
+                : renderObjectCells(effectiveObj).map((c, i) =>
+                    stitchRect(i, effectiveObj.x + c.dx, effectiveObj.y + c.dy, effectiveObj.color, isSelected),
+                  )}
             </g>
           )
         })}

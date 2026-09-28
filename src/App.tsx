@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { IconThumb } from './components/IconThumb'
@@ -14,6 +14,8 @@ import { createId } from './lib/id'
 import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
+import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
+import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
 import { useIsMobile } from './useIsMobile'
@@ -699,6 +701,9 @@ function App() {
     ).values(),
   ]
 
+  const symbols = useMemo(() => assignSymbols(summarizeColors(flattenProject(project))), [project])
+  const [showSymbols, setShowSymbols] = useState(true)
+
   const canvasBody = (
     <>
       <div className="size-input-row">
@@ -1258,6 +1263,9 @@ function App() {
             <span className="canvas-meta__extra"> at {project.fabric.stitchesPerInch} stitches/inch</span>
           </span>
           <span className="zoom-controls">
+            <button type="button" className="symbols-toggle" aria-pressed={showSymbols} onClick={() => setShowSymbols((v) => !v)}>
+              Symbols {showSymbols ? 'on' : 'off'}
+            </button>
             <button type="button" onClick={() => setZoom(project.zoom - 0.25)} disabled={project.zoom <= MIN_ZOOM}>
               −
             </button>
@@ -1301,6 +1309,8 @@ function App() {
             onEraseCell={erasePixel}
             stampMode={stampMode}
             onStamp={addIconObjectAt}
+            symbols={symbols}
+            showSymbols={showSymbols}
           />
         </div>
         {isMobile && (
@@ -1330,7 +1340,9 @@ function App() {
           <ul className="palette-list">
             {paletteColors.map((c) => (
               <li key={c.dmcCode}>
-                <span className="swatch" style={{ backgroundColor: c.hex }} />
+                <span className="swatch" style={{ backgroundColor: c.hex, color: symbolTextIsBlack(c.hex) ? '#000' : '#fff' }}>
+                  {symbols.get(c.dmcCode)}
+                </span>
                 DMC {c.dmcCode} · {c.name}
               </li>
             ))}
