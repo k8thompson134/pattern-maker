@@ -631,7 +631,9 @@ details.tool-section > summary:hover {
   .toolbar > .button-row button {
     font-size: 0.8rem;
     white-space: nowrap;
-    padding-inline: 6px;
+    padding-inline: 10px;
+    flex: 1 1 auto;
+    min-width: max-content;
   }
 
   .icon-grid {
