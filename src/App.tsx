@@ -24,9 +24,89 @@ type ToolTab = 'text' | 'icons' | 'stamp' | 'draw' | 'canvas'
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 2.5
 
+type ProjectHistory = { past: Project[]; present: Project; future: Project[] }
+
+const HISTORY_LIMIT = 50
+// Rapid-fire edits to the same field (typing into the placed-text content box)
+// coalesce into one undo step instead of one per keystroke — pass the same
+// coalesceKey to setProject calls that should merge this way while they keep
+// landing within this window of each other.
+const COALESCE_WINDOW_MS = 800
+
 function App() {
   const [initialLoad] = useState(() => loadProject())
-  const [project, setProject] = useState(() => initialLoad.project ?? createEmptyProject('Untitled'))
+  const [history, setHistory] = useState<ProjectHistory>(() => ({
+    past: [],
+    present: initialLoad.project ?? createEmptyProject('Untitled'),
+    future: [],
+  }))
+  const project = history.present
+  const lastCoalesce = useRef<{ key: string | null; time: number }>({ key: null, time: 0 })
+
+  // Mirrors useState's dual signature (value or updater) so the ~20 existing
+  // call sites that already do `setProject((p) => ({...}))` need no changes.
+  // The undo/redo guard lives inside the updater passed to setHistory (not as
+  // a check against the outer `history` closure) so a stale-closure call from
+  // the keyboard-shortcut effect still reads live state — see handleKeyDown.
+  function setProject(updater: Project | ((p: Project) => Project), coalesceKey?: string) {
+    // The coalesce decision (and the ref mutation that records it) happens here,
+    // outside the updater passed to setHistory — React (StrictMode in dev) can
+    // invoke that updater twice to check purity, and a ref mutated inside it
+    // would get stamped twice, making the *first* keystroke of a new coalesce
+    // key see its own just-written stamp and wrongly merge into the prior step.
+    const now = Date.now()
+    const canCoalesce =
+      !!coalesceKey && coalesceKey === lastCoalesce.current.key && now - lastCoalesce.current.time < COALESCE_WINDOW_MS
+    lastCoalesce.current = { key: coalesceKey ?? null, time: now }
+    setHistory((h) => {
+      const nextPresent = typeof updater === 'function' ? (updater as (p: Project) => Project)(h.present) : updater
+      if (nextPresent === h.present) return h
+      if (canCoalesce) return { ...h, present: nextPresent }
+      const past = [...h.past, h.present]
+      if (past.length > HISTORY_LIMIT) past.shift()
+      return { past, present: nextPresent, future: [] }
+    })
+  }
+
+  // Zoom is view state, not a design edit — update it without touching the
+  // undo/redo stacks at all (not even coalesced into an adjacent step).
+  function updateZoomSilently(updater: (p: Project) => Project) {
+    setHistory((h) => {
+      const nextPresent = updater(h.present)
+      if (nextPresent === h.present) return h
+      return { ...h, present: nextPresent }
+    })
+  }
+
+  // Whole-project replacement (new/switch/save-as/delete) starts a fresh
+  // undo history rather than treating the old design as an undo step away.
+  function resetHistory(next: Project) {
+    lastCoalesce.current = { key: null, time: 0 }
+    setHistory({ past: [], present: next, future: [] })
+  }
+
+  function undo() {
+    setHistory((h) => {
+      if (h.past.length === 0) return h
+      const previous = h.past[h.past.length - 1]
+      return { past: h.past.slice(0, -1), present: previous, future: [h.present, ...h.future] }
+    })
+    // Selection isn't force-cleared here — a step that only edited an object
+    // (moved/recolored/retyped) should leave it selected after undo/redo, not
+    // bounce the panel closed. The pruneSelection effect below drops only the
+    // ids an undo/redo step actually removed.
+  }
+
+  function redo() {
+    setHistory((h) => {
+      if (h.future.length === 0) return h
+      const next = h.future[0]
+      return { past: [...h.past, h.present], present: next, future: h.future.slice(1) }
+    })
+  }
+
+  const canUndo = history.past.length > 0
+  const canRedo = history.future.length > 0
   const [saveError, setSaveError] = useState(false)
   const [loadCorrupted] = useState(initialLoad.corrupted)
   const [draftText, setDraftText] = useState('')
@@ -60,6 +140,19 @@ function App() {
 
   const hasSelection = selectedIds.length > 0
   const [showBackupNudge, setShowBackupNudge] = useState(false)
+
+  // Runs after every project change, whatever caused it (undo/redo, delete,
+  // canvas-size clamp, project switch) — drops only the selected/active-draw
+  // ids that no longer exist in the current project, so an edit that leaves
+  // an object in place also leaves it selected instead of bouncing the panel
+  // closed on every undo/redo step.
+  useEffect(() => {
+    setSelectedIds((ids) => {
+      const filtered = ids.filter((id) => project.objects.some((o) => o.id === id))
+      return filtered.length === ids.length ? ids : filtered
+    })
+    setActivePixelObjectId((id) => (id && !project.objects.some((o) => o.id === id) ? null : id))
+  }, [project])
 
   useEffect(() => {
     setSaveError(!saveProject(project))
@@ -125,7 +218,7 @@ function App() {
     // tools without scrolling first (reported 2026-09-19: default felt too zoomed in).
     const fitZoom = Math.round((Math.min(1, (availableWidth * 0.6) / fullWidthPx) * 20)) / 20
     if (fitZoom < project.zoom) {
-      setProject((p) => ({ ...p, zoom: Math.max(MIN_ZOOM, fitZoom) }))
+      updateZoomSilently((p) => ({ ...p, zoom: Math.max(MIN_ZOOM, fitZoom) }))
     }
     // run once on initial load only — a narrow screen should start zoomed to fit,
     // but shouldn't fight the user's own zoom choice on every resize afterward
@@ -180,17 +273,20 @@ function App() {
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
   }
 
-  function updateTextObject(patch: Partial<Omit<TextObject, 'id' | 'kind'>>) {
+  function updateTextObject(patch: Partial<Omit<TextObject, 'id' | 'kind'>>, coalesceKey?: string) {
     if (!selectedObject) return
-    setProject((p) => ({
-      ...p,
-      objects: p.objects.map((o) =>
-        o.id === selectedObject.id && o.kind === 'text'
-          ? clampToCanvas({ ...o, ...patch }, p.widthStitches, p.heightStitches)
-          : o,
-      ),
-      updatedAt: new Date().toISOString(),
-    }))
+    setProject(
+      (p) => ({
+        ...p,
+        objects: p.objects.map((o) =>
+          o.id === selectedObject.id && o.kind === 'text'
+            ? clampToCanvas({ ...o, ...patch }, p.widthStitches, p.heightStitches)
+            : o,
+        ),
+        updatedAt: new Date().toISOString(),
+      }),
+      coalesceKey,
+    )
   }
 
   function updateIconObject(patch: Partial<Omit<IconObject, 'id' | 'kind'>>) {
@@ -430,12 +526,27 @@ function App() {
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (!hasSelection) return
       const active = document.activeElement
       const isTyping =
         active instanceof HTMLInputElement || active instanceof HTMLSelectElement || active instanceof HTMLTextAreaElement
       if (isTyping) return
 
+      // Undo/redo work with no selection required, unlike the nudge shortcuts below —
+      // checked first so they aren't gated behind hasSelection.
+      const key = e.key.toLowerCase()
+      if ((e.metaKey || e.ctrlKey) && key === 'z') {
+        e.preventDefault()
+        if (e.shiftKey) redo()
+        else undo()
+        return
+      }
+      if ((e.metaKey || e.ctrlKey) && key === 'y') {
+        e.preventDefault()
+        redo()
+        return
+      }
+
+      if (!hasSelection) return
       const step = e.shiftKey ? 5 : 1
       switch (e.key) {
         case 'ArrowLeft':
@@ -476,7 +587,7 @@ function App() {
   // save-as) — otherwise each call site risks forgetting one of these resets,
   // like the width/height/SPI inputs silently keeping the old project's values.
   function swapProject(next: Project) {
-    setProject(next)
+    resetHistory(next)
     setSelectedIds([])
     setActivePixelObjectId(null)
     setConfirmingNewProject(false)
@@ -525,7 +636,7 @@ function App() {
   }
 
   function setZoom(zoom: number) {
-    setProject((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
+    updateZoomSilently((p) => ({ ...p, zoom: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom)) }))
   }
 
   function setCanvasSize(widthStitches: number, heightStitches: number) {
@@ -780,6 +891,14 @@ function App() {
           </div>
         )}
         <div className="button-row">
+          <button type="button" onClick={undo} disabled={!canUndo} title="Undo (Ctrl/Cmd+Z)">
+            Undo
+          </button>
+          <button type="button" onClick={redo} disabled={!canRedo} title="Redo (Ctrl/Cmd+Shift+Z)">
+            Redo
+          </button>
+        </div>
+        <div className="button-row">
           <button type="button" onClick={requestNewProject}>
             New project
           </button>
@@ -864,7 +983,9 @@ function App() {
                 <input
                   type="text"
                   value={selectedObject.content}
-                  onChange={(e) => updateTextObject({ content: e.target.value })}
+                  onChange={(e) =>
+                    updateTextObject({ content: e.target.value }, `text-content-${selectedObject.id}`)
+                  }
                   placeholder="Edit text..."
                 />
                 {(() => {

@@ -195,6 +195,7 @@ pressing New project can't be reversed.
 - **Live stitch-size preview** while typing or editing text, so an oversized phrase is visible before it's placed rather than after.
 - **A backup-reminder banner** appears after 25 edits with no PDF export, since designs live only in this browser with no file export/import yet.
 - **Save as / duplicate a whole project**, to make variants of one layout (same text, different recipient) without retyping everything.
+- **Undo/redo**, via toolbar buttons or Ctrl/Cmd+Z (Ctrl/Cmd+Shift+Z or Ctrl+Y to redo). Rapid edits to the same field (typing into a placed text object's content) merge into one undo step; view-only changes like zoom never appear in the history at all. Switching, duplicating, or starting a project begins a fresh undo history for it.
 
 - **Rotation now reaches the export.** It used to change only the on-screen drawing, so rotated text and icons printed unrotated in the PDF, and alignment and canvas-edge limits used the wrong size. Rotation now changes the stitches themselves: the screen, PDF, stitch counts, alignment, and edge limits all match. Designs saved before this fix that used 90° or 270° may appear shifted by a few stitches, so check their position.
 - **New project asks first** when the current design isn't empty.
@@ -266,7 +267,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| No undo/redo | Mistakes are permanent; this discourages experimenting. | **High** | ✱ (v1.1) |
+| ~~No undo/redo~~ | ~~Fixed, see section 5.~~ | Fixed | |
 | Erase can't touch text or icons | Stitchers often tweak a single stitch of a letter or motif. | Medium | |
 | ~~No "save as" / duplicate whole project~~ | ~~Fixed — task #543, see section 5.~~ | Fixed | |
 | Can't reopen an earlier drawing | Adding to a drawing later makes a new, separate object. | Medium | |
@@ -299,9 +300,8 @@ If the goal is "a stitcher can reliably stitch from what they design," the
 highest-leverage next steps are:
 
 1. **Chart readability:** symbols per color (#539), a darker line every 10 stitches and center marks (#540), and multi-page export for larger designs (#541).
-2. **Undo/redo** (#542).
-3. **Full DMC palette**, plus recolor-everywhere (#544).
-4. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
+2. **Full DMC palette**, plus recolor-everywhere (#544).
+3. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
 
-~~Save-as / duplicate project (#543)~~ — done, see section 5.
+~~Save-as / duplicate project (#543)~~ and ~~undo/redo (#542)~~ — done, see section 5.
 6. **Borders** (#518) and **multi-color motifs.**
