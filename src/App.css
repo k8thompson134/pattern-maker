@@ -310,6 +310,11 @@ details.tool-section > summary:hover {
   min-width: 0;
 }
 
+.button-row > button {
+  min-width: max-content;
+  white-space: nowrap;
+}
+
 .toggle-btn--active,
 .icon-thumb-btn--active {
   background: var(--accent-bg);
@@ -630,10 +635,8 @@ details.tool-section > summary:hover {
 
   .toolbar > .button-row button {
     font-size: 0.8rem;
-    white-space: nowrap;
     padding-inline: 10px;
     flex: 1 1 auto;
-    min-width: max-content;
   }
 
   .icon-grid {
