@@ -691,3 +691,42 @@ details.tool-section > summary:hover {
     min-height: 40px;
   }
 }
+
+.color-picker__more {
+  font-size: 0.8rem;
+  padding: 0 var(--space-2);
+  height: 24px;
+  white-space: nowrap;
+}
+
+.color-picker__selected {
+  margin: var(--space-1, 4px) 0 0;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.color-picker__browser {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.color-picker__grid {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.palette-list li {
+  flex-wrap: wrap;
+}
+
+.palette-list__replace {
+  margin-left: auto;
+  font-size: 0.75rem;
+  padding: 2px var(--space-2);
+}
+
+.palette-list__picker {
+  flex-basis: 100%;
+}

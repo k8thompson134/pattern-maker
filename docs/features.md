@@ -123,10 +123,8 @@ not to a multi-selection or group.
 
 ### 3.7 Colors and threads
 
-- **Palette:** 14 DMC colors: 310 Black, B5200 Snow White, 321 Red, 666
-  Bright Red, 703 Chartreuse, 798 Delft Blue, 809 Delft Blue Lt, 972 Deep
-  Canary, 3607 Plum Lt, 552 Violet Med, 992 Aquamarine, 3799 Charcoal, 415
-  Pearl Grey, 976 Golden Brown. No other colors can be added.
+- **Palette:** the full DMC six-strand range (489 colors, including B5200, Blanc and Ecru). Every color picker shows 14 quick-pick swatches (310 Black, B5200 Snow White, 321 Red, 666 Bright Red, 703 Chartreuse, 798 Delft Blue Dark, 809 Delft Blue, 972 Deep Canary, 3607 Plum Light, 552 Violet Medium, 992 Aquamarine, 3799 Charcoal, 415 Pearl Grey, 976 Golden Brown) plus a "More colors" button that opens a searchable list of all of them (search by DMC number or name). A chosen color outside the quick picks shows up as an extra swatch, and the picker always names the selected color. On-screen colors are approximations of the thread, not a calibrated match.
+- **Replace everywhere:** each color in the Palette panel has a Replace button that swaps it for any other DMC color across every text, icon, and drawing in one step (one undo).
 - **Colors-used panel:** lists every DMC color in the design, live. Stitch
   counts only appear in the PDF.
 - DMC is the only thread brand.
@@ -199,6 +197,7 @@ pressing New project can't be reversed.
 - **Undo/redo**, via toolbar buttons or Ctrl/Cmd+Z (Ctrl/Cmd+Shift+Z or Ctrl+Y to redo). Rapid edits to the same field (typing into a placed text object's content) merge into one undo step; view-only changes like zoom never appear in the history at all. Switching, duplicating, or starting a project begins a fresh undo history for it.
 
 - **Chart readability.** The PDF puts a distinct symbol in every colored square (also shown on the canvas and in the palette, with a Symbols on/off toggle), draws a heavier line every 10 stitches with stitch numbers along the edges, and marks the center column and row with arrows. Large designs split across multiple pages with an overview page instead of shrinking to unreadable.
+- **Full DMC palette and replace-everywhere.** All 489 DMC colors are available through a searchable picker (14 quick picks stay on top), and any color in the design can be swapped for another across every object at once. Designs saved earlier keep the exact on-screen shades they were made with, which differ slightly from the current palette values for the original 14 colors.
 - **Rotation now reaches the export.** It used to change only the on-screen drawing, so rotated text and icons printed unrotated in the PDF, and alignment and canvas-edge limits used the wrong size. Rotation now changes the stitches themselves: the screen, PDF, stitch counts, alignment, and edge limits all match. Designs saved before this fix that used 90° or 270° may appear shifted by a few stitches, so check their position.
 - **New project asks first** when the current design isn't empty.
 - **Erase works on any drawing**, not just the one being drawn in the current session.
@@ -230,8 +229,8 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| Only 14 fixed DMC colors | DMC has ~500 colors. Skin tones, pastels, greens, browns, and neutrals are mostly missing. Stitchers often design around floss they already own. | **High** | ✱ ("DMC color picker") |
-| No "swap this color everywhere" | Trying a different color scheme means recoloring every object by hand. | Medium | |
+| ~~Only 14 fixed DMC colors~~ | ~~Fixed, see section 5.~~ | Fixed | |
+| ~~No "swap this color everywhere"~~ | ~~Fixed, see section 5.~~ | Fixed | |
 | No "my floss stash" palette | Designing from threads on hand is a common real-world constraint. | Low | |
 | Stitch counts only in the PDF | Can't see thread usage while designing. | Low | |
 | DMC only | Anchor/other-brand users must convert by hand. | Low | Out of scope for now |
@@ -302,7 +301,7 @@ If the goal is "a stitcher can reliably stitch from what they design," the
 highest-leverage next steps are:
 
 1. ~~**Chart readability**~~ (symbols, heavier 10-stitch lines, center marks, multi-page export). Done.
-2. **Full DMC palette**, plus recolor-everywhere (#544).
+2. ~~**Full DMC palette**, plus recolor-everywhere~~. Done.
 3. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
 
 ~~Save-as / duplicate project (#543)~~ and ~~undo/redo (#542)~~ — done, see section 5.

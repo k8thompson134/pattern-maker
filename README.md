@@ -15,7 +15,7 @@ art, and repeatable fundraiser or event pieces.
 - **Icon library** of 25 motifs, plus tiny "stamp" decorations for scattering accents
 - **Freehand drawing**: paint or erase individual stitches in any palette color
 - **Arrange**: drag, resize, rotate, align, layer, duplicate, repeat into a row or column, multi-select, and group
-- **DMC colors**: a 14-color starter palette, with a live list of colors used
+- **DMC colors**: the full 489-color DMC range (searchable), a live list of colors used, and replace-a-color-everywhere
 - **PDF export**: a one-page chart with title, dimensions, colored grid, and DMC legend with stitch counts
 - **Autosave**: the current project saves to the browser after every change
 - **Works on phones**: tabbed tools, tap-based arrows and size buttons, touch drag
@@ -47,6 +47,10 @@ React + TypeScript + Vite. The canvas is SVG, and PDF export uses jsPDF.
 | `src/lib/fonts.ts`, `icons.ts`, `dmcColors.ts` | Bitmap fonts, icon library, DMC palette |
 | `src/lib/flattenProject.ts` | Collapses all objects into the final stitch grid (used by export) |
 | `src/lib/exportPdf.ts` | PDF chart generation |
+
+## Credits
+
+DMC color data: [craft-color-codes](https://github.com/makebead/craft-color-codes) by MakeBead (https://makebead.com), CC BY 4.0.
 
 ## Docs
 

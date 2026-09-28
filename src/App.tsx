@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { IconThumb } from './components/IconThumb'
-import { createEmptyProject, type IconObject, type Project, type TextDirection, type TextObject } from './lib/types'
+import { createEmptyProject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
@@ -15,6 +15,7 @@ import { alignObject, type Alignment } from './lib/align'
 import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
 import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
+import { replaceColor } from './lib/recolor'
 import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
@@ -590,6 +591,7 @@ function App() {
   // like the width/height/SPI inputs silently keeping the old project's values.
   function swapProject(next: Project) {
     resetHistory(next)
+    setReplacingCode(null)
     setSelectedIds([])
     setActivePixelObjectId(null)
     setConfirmingNewProject(false)
@@ -703,6 +705,12 @@ function App() {
 
   const symbols = useMemo(() => assignSymbols(summarizeColors(flattenProject(project))), [project])
   const [showSymbols, setShowSymbols] = useState(true)
+  const [replacingCode, setReplacingCode] = useState<string | null>(null)
+
+  function replaceEverywhere(fromCode: string, to: StitchColor) {
+    setProject((p) => ({ ...p, objects: replaceColor(p.objects, fromCode, to), updatedAt: new Date().toISOString() }))
+    setReplacingCode(null)
+  }
 
   const canvasBody = (
     <>
@@ -1344,6 +1352,19 @@ function App() {
                   {symbols.get(c.dmcCode)}
                 </span>
                 DMC {c.dmcCode} · {c.name}
+                <button
+                  type="button"
+                  className="palette-list__replace"
+                  aria-expanded={replacingCode === c.dmcCode}
+                  onClick={() => setReplacingCode(replacingCode === c.dmcCode ? null : c.dmcCode)}
+                >
+                  Replace
+                </button>
+                {replacingCode === c.dmcCode && (
+                  <div className="palette-list__picker">
+                    <ColorSwatchPicker selected={c} onSelect={(to) => replaceEverywhere(c.dmcCode, to)} startExpanded />
+                  </div>
+                )}
               </li>
             ))}
           </ul>

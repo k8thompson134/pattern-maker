@@ -1,18 +1,18 @@
 import type { StitchColor } from './types'
+import { DMC_PALETTE } from './dmcPalette'
 
-export const DMC_STARTER_COLORS: StitchColor[] = [
-  { dmcCode: '310', name: 'Black', hex: '#0a0a0a' },
-  { dmcCode: 'B5200', name: 'Snow White', hex: '#fbfbf8' },
-  { dmcCode: '321', name: 'Red', hex: '#c1272d' },
-  { dmcCode: '666', name: 'Bright Red', hex: '#e0182b' },
-  { dmcCode: '703', name: 'Chartreuse', hex: '#7cb342' },
-  { dmcCode: '798', name: 'Delft Blue', hex: '#3763a3' },
-  { dmcCode: '809', name: 'Delft Blue Lt', hex: '#7f9fc9' },
-  { dmcCode: '972', name: 'Deep Canary', hex: '#f2a900' },
-  { dmcCode: '3607', name: 'Plum Lt', hex: '#c76a9a' },
-  { dmcCode: '552', name: 'Violet Med', hex: '#7b3f8f' },
-  { dmcCode: '992', name: 'Aquamarine', hex: '#3fa89b' },
-  { dmcCode: '3799', name: 'Charcoal', hex: '#3a3a3a' },
-  { dmcCode: '415', name: 'Pearl Grey', hex: '#c7c7c7' },
-  { dmcCode: '976', name: 'Golden Brown', hex: '#c5762a' },
-]
+const STARTER_CODES = ['310', 'B5200', '321', '666', '703', '798', '809', '972', '3607', '552', '992', '3799', '415', '976']
+
+// The quick-pick swatches shown by default; the full palette is behind "More colors".
+export const DMC_STARTER_COLORS: StitchColor[] = STARTER_CODES.map((code) => {
+  const c = DMC_PALETTE.find((p) => p.dmcCode === code)
+  if (!c) throw new Error(`Starter color DMC ${code} missing from palette`)
+  return c
+})
+
+// Case-insensitive match on code (prefix) or any part of the name; blank query returns everything.
+export function searchDmcColors(query: string): StitchColor[] {
+  const q = query.trim().toLowerCase()
+  if (!q) return DMC_PALETTE
+  return DMC_PALETTE.filter((c) => c.dmcCode.toLowerCase().startsWith(q) || c.name.toLowerCase().includes(q))
+}
