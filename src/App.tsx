@@ -5,8 +5,9 @@ import { IconThumb } from './components/IconThumb'
 import { createEmptyProject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
+import type { BitmapFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
-import { measureText, unsupportedChars } from './lib/textRender'
+import { accentDroppedChars, measureText, unsupportedChars } from './lib/textRender'
 import { ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
@@ -35,6 +36,26 @@ const HISTORY_LIMIT = 50
 // coalesceKey to setProject calls that should merge this way while they keep
 // landing within this window of each other.
 const COALESCE_WINDOW_MS = 800
+
+function TextWarnings({ text, font }: { text: string; font: BitmapFont }) {
+  const unsupported = unsupportedChars(text, font)
+  const dropped = accentDroppedChars(text, font)
+  const quote = (chars: string[]) => chars.map((c) => `"${c}"`).join(', ')
+  return (
+    <>
+      {unsupported.length > 0 && (
+        <p className="text-warning">
+          {quote(unsupported)} {unsupported.length === 1 ? "isn't" : "aren't"} supported and will be skipped.
+        </p>
+      )}
+      {dropped.length > 0 && (
+        <p className="text-warning">
+          {quote(dropped)} will print without {dropped.length === 1 ? 'its' : 'their'} accent in this font. Mixed case has accents.
+        </p>
+      )}
+    </>
+  )
+}
 
 function App() {
   const [initialLoad] = useState(() => loadProject())
@@ -753,7 +774,6 @@ function App() {
     </>
   )
   const draftFont = getFont(draftFontId)
-  const draftUnsupported = unsupportedChars(draftText, draftFont)
   const draftSize = measureText(draftText, draftFont, 'horizontal', 1)
   const textBody = (
     <>
@@ -763,12 +783,7 @@ function App() {
         onChange={(e) => setDraftText(e.target.value)}
         placeholder="Type a phrase"
       />
-      {draftUnsupported.length > 0 && (
-        <p className="text-warning">
-          {draftUnsupported.map((c) => `"${c}"`).join(', ')} {draftUnsupported.length === 1 ? "isn't" : "aren't"}{' '}
-          supported yet and will be skipped.
-        </p>
-      )}
+      <TextWarnings text={draftText} font={draftFont} />
       {draftText && (
         <p className="tool-placeholder">
           {draftSize.width}×{draftSize.height} stitches at 1×
@@ -1003,16 +1018,10 @@ function App() {
                 />
                 {(() => {
                   const font = getFont(selectedObject.font)
-                  const unsupported = unsupportedChars(selectedObject.content, font)
                   const size = measureText(selectedObject.content, font, selectedObject.direction, selectedObject.scale)
                   return (
                     <>
-                      {unsupported.length > 0 && (
-                        <p className="text-warning">
-                          {unsupported.map((c) => `"${c}"`).join(', ')} {unsupported.length === 1 ? "isn't" : "aren't"}{' '}
-                          supported yet and will be skipped.
-                        </p>
-                      )}
+                      <TextWarnings text={selectedObject.content} font={font} />
                       <p className="tool-placeholder">
                         {size.width}×{size.height} stitches
                         {(size.width > project.widthStitches || size.height > project.heightStitches) &&
@@ -1021,6 +1030,18 @@ function App() {
                     </>
                   )
                 })()}
+
+                <label className="field-label">Font</label>
+                <select
+                  value={getFont(selectedObject.font).id}
+                  onChange={(e) => updateTextObject({ font: e.target.value })}
+                >
+                  {AVAILABLE_FONTS.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
 
                 <label className="field-label">Direction</label>
                 <div className="button-row">

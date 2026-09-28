@@ -63,10 +63,10 @@ These rules explain most of the behavior (and most of the limits) below.
 
 | Feature | Details |
 | --- | --- |
-| Fonts | **Block 5×7** (7 stitches tall) and **Tiny 3×5** (5 stitches tall). |
-| Characters | A–Z, 0–9, space, and `. , ! ? ' -`. Lowercase is typed fine but stitched as capitals. Any other character (accents, `&`, `@`, `:` …) becomes a blank space, but a red warning names the exact unsupported characters as you type, both in the Text tool and when editing a placed text object. |
+| Fonts | **Block 5×7** (capitals, 7 stitches tall), **Tiny 3×5** (capitals, 5 tall), **Mixed case 5×9** (lowercase with descenders and accents, 9 tall) and **Italic 5×9** (the mixed-case font slanted). Mixed and Italic letters have varying widths, so `i` and `l` sit closer than `m` and `w`. |
+| Characters | A–Z, 0–9, space, and `. , ! ? ' " - & : ; / # ( ) + = * % _ ♥` in every font. Block and Tiny stitch lowercase as capitals; Mixed and Italic have true lowercase plus `à á â ä è é ê ë ì í î ï ò ó ô õ ö ù ú û ü ñ ç`. Any accented letter a font doesn't draw is stitched as its plain base letter, with a warning that says so. Any other character (`@`, `¿`, …) becomes a blank space, with a warning naming it, both in the Text tool and when editing a placed text object. |
 | Direction | Across (left to right) or Down (letters stacked vertically). |
-| Editing | The words, direction, and color can be changed after placing. The font cannot be changed after placing. |
+| Editing | The words, font, direction, and color can be changed after placing. |
 | Size | 1× to 6×. See section 2. |
 | Spacing | Letter and line spacing are fixed by the font. There's no kerning or multi-line text; each line is a separate text object. |
 
@@ -164,8 +164,8 @@ not to a multi-selection or group.
 | Canvas | 1–500 stitches per side |
 | Object size | 1×–6× |
 | Rotation | 90° steps, text and icons only |
-| Fonts | 2 |
-| Characters | A–Z, 0–9, space, `. , ! ? ' -` |
+| Fonts | 4 |
+| Characters | Letters (with lowercase and common accents in the mixed-case fonts), 0–9, space, and 14 punctuation marks |
 | Icons | 25 (+ 4 mini stamps) |
 | Colors | 14 DMC, fixed |
 | Repeat | 2–50 copies, 0–50 gap |
@@ -190,7 +190,7 @@ pressing New project can't be reversed.
 
 ### Fixed
 
-- **Unsupported characters now warn as you type**, instead of silently becoming blanks. The text tool and the editing panel for a placed text object both show which exact characters (e.g. `&`, `é`) aren't supported and will be skipped.
+- **Unsupported characters now warn as you type**, instead of silently becoming blanks. The text tool and the editing panel for a placed text object both show which exact characters (e.g. `@`, `¿`) aren't supported and will be skipped.
 - **Live stitch-size preview** while typing or editing text, so an oversized phrase is visible before it's placed rather than after.
 - **A backup-reminder banner** appears after 25 edits with no PDF export, since designs live only in this browser with no file export/import yet.
 - **Save as / duplicate a whole project**, to make variants of one layout (same text, different recipient) without retyping everything.
@@ -247,11 +247,10 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| Capitals only | Mixed-case names and phrases are a staple of samplers and gifts. | **High** | |
-| Only 2 fonts, both blocky | Script, serif, and decorative sampler alphabets are core to cross-stitch lettering. | **High** | ✱ (more fonts) |
-| Missing characters (`& : / # @ ♥` and accents) | Dates (`9/25`), `&` in couples' names, and accented names are all common. Missing ones silently vanish (section 5). | **High** | ✱ (accents) |
+| No hand-drawn serif or script font | The fonts are blocky. Italic is a slanted version of the mixed-case font, not a true script or serif alphabet. | Medium | ✱ (more fonts) |
+| Accents on capitals | Accented capitals stitch as plain capitals (with a warning), since a capital fills the full letter height with no room above it. | Low | |
+| No `@` or inverted punctuation (`¿ ¡`) | Rare in stitched text; they become blanks with a warning. | Low | |
 | No multi-line text or alignment | Each line is placed and centered by hand. | Medium | |
-| Can't change the font after placing | Must delete and retype. | Low | |
 
 ### 6.5 Motifs and decoration
 
@@ -302,7 +301,7 @@ highest-leverage next steps are:
 
 1. ~~**Chart readability**~~ (symbols, heavier 10-stitch lines, center marks, multi-page export). Done.
 2. ~~**Full DMC palette**, plus recolor-everywhere~~. Done.
-3. **Lettering:** lowercase, the missing punctuation (`& : / #`), and at least one more font style, script or serif (#545).
+3. ~~**Lettering**~~ (lowercase, accents, punctuation, an italic font). Done. A hand-drawn serif or script alphabet is a remaining stretch.
 
 ~~Save-as / duplicate project (#543)~~ and ~~undo/redo (#542)~~ — done, see section 5.
 6. **Borders** (#518) and **multi-color motifs.**

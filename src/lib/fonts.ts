@@ -57,6 +57,20 @@ export const FONT_BLOCK_5X7: BitmapFont = {
     '?': G(['01110', '10001', '00001', '00010', '00100', '00000', '00100']),
     "'": G(['00100', '00100', '00100', '00000', '00000', '00000', '00000']),
     '-': G(['00000', '00000', '00000', '11111', '00000', '00000', '00000']),
+    '&': G(['01100', '10010', '10100', '01000', '10101', '10010', '01101']),
+    ':': G(['00000', '01100', '01100', '00000', '01100', '01100', '00000']),
+    ';': G(['00000', '01100', '01100', '00000', '01100', '01100', '01000']),
+    '/': G(['00001', '00001', '00010', '00100', '01000', '10000', '10000']),
+    '#': G(['01010', '01010', '11111', '01010', '11111', '01010', '01010']),
+    '(': G(['00010', '00100', '01000', '01000', '01000', '00100', '00010']),
+    ')': G(['01000', '00100', '00010', '00010', '00010', '00100', '01000']),
+    '+': G(['00000', '00100', '00100', '11111', '00100', '00100', '00000']),
+    '=': G(['00000', '00000', '11111', '00000', '11111', '00000', '00000']),
+    '*': G(['00000', '10101', '01110', '11111', '01110', '10101', '00000']),
+    '"': G(['01010', '01010', '01010', '00000', '00000', '00000', '00000']),
+    '%': G(['11001', '11010', '00010', '00100', '01000', '01011', '10011']),
+    '_': G(['00000', '00000', '00000', '00000', '00000', '00000', '11111']),
+    '♥': G(['00000', '01010', '11111', '11111', '01110', '00100', '00000']),
   },
 }
 
@@ -109,10 +123,141 @@ export const FONT_TINY_3X5: BitmapFont = {
     '?': G(['110', '001', '010', '000', '010']),
     "'": G(['010', '010', '000', '000', '000']),
     '-': G(['000', '000', '111', '000', '000']),
+    '&': G(['010', '101', '010', '101', '011']),
+    ':': G(['000', '010', '000', '010', '000']),
+    ';': G(['000', '010', '000', '010', '100']),
+    '/': G(['001', '001', '010', '100', '100']),
+    '#': G(['101', '111', '101', '111', '101']),
+    '(': G(['010', '100', '100', '100', '010']),
+    ')': G(['010', '001', '001', '001', '010']),
+    '+': G(['000', '010', '111', '010', '000']),
+    '=': G(['000', '111', '000', '111', '000']),
+    '*': G(['000', '101', '010', '101', '000']),
+    '"': G(['101', '101', '000', '000', '000']),
+    '%': G(['101', '001', '010', '100', '101']),
+    '_': G(['000', '000', '000', '000', '111']),
+    '♥': G(['101', '111', '111', '010', '000']),
   },
 }
 
-export const AVAILABLE_FONTS: BitmapFont[] = [FONT_BLOCK_5X7, FONT_TINY_3X5]
+// Mixed-case font, 9 rows: caps and digits sit on rows 0-6 (the Block 5x7 shapes),
+// lowercase x-height on rows 2-6, ascenders on rows 0-6, descenders on rows 7-8, and
+// accents on rows 0-1 above the x-height letters. Glyph widths vary (i, l, t, r...).
+const MIXED_HEIGHT = 9
+const padRows = (rows: string[]) => [...rows, ...Array(MIXED_HEIGHT - rows.length).fill('0'.repeat(rows[0].length))]
+
+const MIXED_LOWER: Record<string, string[]> = {
+  a: G(['00000', '00000', '01110', '00001', '01111', '10001', '01111', '00000', '00000']),
+  b: G(['10000', '10000', '10110', '11001', '10001', '11001', '10110', '00000', '00000']),
+  c: G(['00000', '00000', '01110', '10001', '10000', '10001', '01110', '00000', '00000']),
+  d: G(['00001', '00001', '01101', '10011', '10001', '10011', '01101', '00000', '00000']),
+  e: G(['00000', '00000', '01110', '10001', '11111', '10000', '01110', '00000', '00000']),
+  f: G(['0110', '1001', '1000', '1110', '1000', '1000', '1000', '0000', '0000']),
+  g: G(['00000', '00000', '01111', '10001', '10001', '10001', '01111', '00001', '01110']),
+  h: G(['10000', '10000', '10110', '11001', '10001', '10001', '10001', '00000', '00000']),
+  i: G(['010', '000', '110', '010', '010', '010', '111', '000', '000']),
+  j: G(['0010', '0000', '0010', '0010', '0010', '0010', '0010', '0010', '1100']),
+  k: G(['1000', '1000', '1001', '1010', '1100', '1010', '1001', '0000', '0000']),
+  l: G(['110', '010', '010', '010', '010', '010', '111', '000', '000']),
+  m: G(['00000', '00000', '11010', '10101', '10101', '10101', '10101', '00000', '00000']),
+  n: G(['00000', '00000', '10110', '11001', '10001', '10001', '10001', '00000', '00000']),
+  o: G(['00000', '00000', '01110', '10001', '10001', '10001', '01110', '00000', '00000']),
+  p: G(['00000', '00000', '10110', '11001', '10001', '11001', '10110', '10000', '10000']),
+  q: G(['00000', '00000', '01101', '10011', '10001', '10011', '01101', '00001', '00001']),
+  r: G(['0000', '0000', '1011', '1100', '1000', '1000', '1000', '0000', '0000']),
+  s: G(['00000', '00000', '01111', '10000', '01110', '00001', '11110', '00000', '00000']),
+  t: G(['0100', '0100', '1110', '0100', '0100', '0100', '0011', '0000', '0000']),
+  u: G(['00000', '00000', '10001', '10001', '10001', '10011', '01101', '00000', '00000']),
+  v: G(['00000', '00000', '10001', '10001', '10001', '01010', '00100', '00000', '00000']),
+  w: G(['00000', '00000', '10001', '10001', '10101', '10101', '01010', '00000', '00000']),
+  x: G(['00000', '00000', '10001', '01010', '00100', '01010', '10001', '00000', '00000']),
+  y: G(['00000', '00000', '10001', '10001', '10001', '01010', '00100', '01000', '10000']),
+  z: G(['00000', '00000', '11111', '00010', '00100', '01000', '11111', '00000', '00000']),
+}
+
+// Accent marks overlaid on rows 0-1 (cedilla on rows 7-8) of a 5-wide base glyph.
+const ACCENTS: Record<string, [string, string]> = {
+  '\u0300': ['01000', '00100'],
+  '\u0301': ['00010', '00100'],
+  '\u0302': ['00100', '01010'],
+  '\u0308': ['01010', '00000'],
+  '\u0303': ['01101', '10010'],
+}
+const DOTLESS_I = G(['000', '000', '110', '010', '010', '010', '111', '000', '000'])
+const I_ACCENTS: Record<string, [string, string]> = {
+  '\u0300': ['100', '010'],
+  '\u0301': ['001', '010'],
+  '\u0302': ['010', '101'],
+  '\u0308': ['101', '000'],
+}
+
+function overlay(base: string[], top: [string, string], bottom?: [string, string]): string[] {
+  const or = (a: string, b: string) => [...a].map((c, i) => (c === '1' || b[i] === '1' ? '1' : '0')).join('')
+  return base.map((row, y) => {
+    if (y < 2) return or(row, top[y])
+    if (bottom && y >= 7) return or(row, bottom[y - 7])
+    return row
+  })
+}
+
+function buildAccented(): Record<string, string[]> {
+  const out: Record<string, string[]> = {}
+  for (const base of ['a', 'e', 'o', 'u']) {
+    for (const [mark, rows] of Object.entries(ACCENTS)) {
+      if (mark === '\u0303' && base !== 'o') continue
+      out[(base + mark).normalize('NFC')] = overlay(MIXED_LOWER[base], rows)
+    }
+  }
+  out['ñ'] = overlay(MIXED_LOWER.n, ACCENTS['\u0303'])
+  out['ç'] = overlay(MIXED_LOWER.c, ['00000', '00000'], ['00100', '01100'])
+  for (const [mark, rows] of Object.entries(I_ACCENTS)) {
+    out[('i' + mark).normalize('NFC')] = overlay(DOTLESS_I, rows)
+  }
+  return out
+}
+
+export const FONT_MIXED_5X9: BitmapFont = {
+  id: 'mixed-5x9',
+  name: 'Mixed case 5x9',
+  cellWidth: 5,
+  cellHeight: MIXED_HEIGHT,
+  glyphs: {
+    ...Object.fromEntries(
+      Object.entries(FONT_BLOCK_5X7.glyphs)
+        .filter(([ch]) => ch !== ' ')
+        .map(([ch, rows]) => [ch, padRows(rows)]),
+    ),
+    ' ': G(Array(MIXED_HEIGHT).fill('000')),
+    ...MIXED_LOWER,
+    ...buildAccented(),
+  },
+}
+
+// Slants a font by shifting upper rows right in three steps (bottom third stays put),
+// then trims empty trailing columns so spacing stays even.
+function slantFont(font: BitmapFont, id: string, name: string): BitmapFont {
+  const maxShift = Math.floor((font.cellHeight - 1) / 3)
+  const glyphs: Record<string, string[]> = {}
+  for (const [ch, rows] of Object.entries(font.glyphs)) {
+    if (ch === ' ') {
+      glyphs[ch] = rows
+      continue
+    }
+    let slanted = rows.map((row, y) => {
+      const shift = Math.floor((font.cellHeight - 1 - y) / 3)
+      return '0'.repeat(shift) + row + '0'.repeat(maxShift - shift)
+    })
+    while (slanted[0].length > 1 && slanted.every((r) => r.endsWith('0'))) {
+      slanted = slanted.map((r) => r.slice(0, -1))
+    }
+    glyphs[ch] = slanted
+  }
+  return { id, name, cellWidth: font.cellWidth + maxShift, cellHeight: font.cellHeight, glyphs }
+}
+
+export const FONT_ITALIC_5X9 = slantFont(FONT_MIXED_5X9, 'italic-5x9', 'Italic 5x9')
+
+export const AVAILABLE_FONTS: BitmapFont[] = [FONT_BLOCK_5X7, FONT_TINY_3X5, FONT_MIXED_5X9, FONT_ITALIC_5X9]
 
 export function getFont(id: string): BitmapFont {
   return AVAILABLE_FONTS.find((f) => f.id === id) ?? FONT_BLOCK_5X7
