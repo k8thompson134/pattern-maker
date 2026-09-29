@@ -154,8 +154,8 @@ function App() {
   const [widthInput, setWidthInput] = useState(() => String(project.widthStitches))
   const [heightInput, setHeightInput] = useState(() => String(project.heightStitches))
   const [spiInput, setSpiInput] = useState(() => String(project.fabric.stitchesPerInch))
-  const [repeatCount, setRepeatCount] = useState(5)
-  const [repeatSpacing, setRepeatSpacing] = useState(2)
+  const [repeatCount, setRepeatCount] = useState('5')
+  const [repeatSpacing, setRepeatSpacing] = useState('2')
   const [repeatDirection, setRepeatDirection] = useState<'horizontal' | 'vertical'>('horizontal')
   const selectedPanelRef = useRef<HTMLDivElement>(null)
   const toolbarRef = useRef<HTMLElement>(null)
@@ -362,6 +362,9 @@ function App() {
       updatedAt: new Date().toISOString(),
     }))
   }
+
+  const clampRepeatCount = (v: string) => Math.max(2, Math.min(50, Math.round(Number(v)) || 2))
+  const clampRepeatSpacing = (v: string) => Math.max(0, Math.min(50, Math.round(Number(v)) || 0))
 
   // Repeats the selected object `count` times total (the original plus count-1
   // copies), spaced `spacing` stitches apart edge-to-edge — the "string of
@@ -1196,7 +1199,8 @@ function App() {
                       min={2}
                       max={50}
                       value={repeatCount}
-                      onChange={(e) => setRepeatCount(Math.max(2, Math.min(50, Number(e.target.value) || 2)))}
+                      onChange={(e) => setRepeatCount(e.target.value)}
+                      onBlur={() => setRepeatCount(String(clampRepeatCount(repeatCount)))}
                     />
                   </label>
                   <label>
@@ -1206,13 +1210,20 @@ function App() {
                       min={0}
                       max={50}
                       value={repeatSpacing}
-                      onChange={(e) => setRepeatSpacing(Math.max(0, Math.min(50, Number(e.target.value) || 0)))}
+                      onChange={(e) => setRepeatSpacing(e.target.value)}
+                      onBlur={() => setRepeatSpacing(String(clampRepeatSpacing(repeatSpacing)))}
                     />
                   </label>
                 </div>
                 <button
                   type="button"
-                  onClick={() => repeatSelectedObject(repeatCount, repeatSpacing, repeatDirection)}
+                  onClick={() => {
+                    const count = clampRepeatCount(repeatCount)
+                    const spacing = clampRepeatSpacing(repeatSpacing)
+                    setRepeatCount(String(count))
+                    setRepeatSpacing(String(spacing))
+                    repeatSelectedObject(count, spacing, repeatDirection)
+                  }}
                 >
                   Repeat
                 </button>
