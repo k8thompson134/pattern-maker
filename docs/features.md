@@ -185,7 +185,7 @@ multi-selection or group.
 | Rotation | 90° steps, text and icons only |
 | Fonts | 6 |
 | Characters | Letters (with lowercase and common accents in the mixed-case fonts), 0–9, space, and 14 punctuation marks |
-| Icons | 97 built in across 12 groups, plus your own saved icons, and 12 mini stamps (see [`icons.md`](icons.md)) |
+| Icons | 96 built in across 12 groups, plus your own saved icons, and 12 mini stamps (see [`icons.md`](icons.md)) |
 | Colors | 489 DMC, searchable |
 | Repeat | 2–50 copies, 0–50 gap |
 | Designs | Any number, in one browser |
