@@ -233,10 +233,10 @@ export const FONT_MIXED_5X9: BitmapFont = {
   },
 }
 
-// Slants a font by shifting upper rows right in three steps (bottom third stays put),
+// Slants a font by shifting the upper half of the rows one stitch right,
 // then trims empty trailing columns so spacing stays even.
 function slantFont(font: BitmapFont, id: string, name: string): BitmapFont {
-  const maxShift = Math.floor((font.cellHeight - 1) / 3)
+  const maxShift = 1
   const glyphs: Record<string, string[]> = {}
   for (const [ch, rows] of Object.entries(font.glyphs)) {
     if (ch === ' ') {
@@ -244,7 +244,7 @@ function slantFont(font: BitmapFont, id: string, name: string): BitmapFont {
       continue
     }
     let slanted = rows.map((row, y) => {
-      const shift = Math.floor((font.cellHeight - 1 - y) / 3)
+      const shift = y < font.cellHeight / 2 ? 1 : 0
       return '0'.repeat(shift) + row + '0'.repeat(maxShift - shift)
     })
     while (slanted[0].length > 1 && slanted.every((r) => r.endsWith('0'))) {
