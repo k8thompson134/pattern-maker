@@ -41,6 +41,8 @@ export type PixelObject = {
   id: string
   kind: 'pixels'
   groupId?: string
+  // Only the stitches themselves take taps, not the empty space inside the bounding box (used by borders).
+  hollow?: boolean
   x: number
   y: number
   cells: PixelCell[]

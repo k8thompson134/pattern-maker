@@ -273,13 +273,15 @@ export function CanvasGrid({
                   its filled pixels — a touch landing in the gap inside a heart's notch or
                   a crescent moon's curve would otherwise miss every rect here, fall through
                   to the canvas background, and the browser would scroll instead of drag. */}
-              <rect
-                x={effectiveObj.x * cell}
-                y={effectiveObj.y * cell}
-                width={hitWidth * cell}
-                height={hitHeight * cell}
-                fill="transparent"
-              />
+              {!(effectiveObj.kind === 'pixels' && effectiveObj.hollow) && (
+                <rect
+                  x={effectiveObj.x * cell}
+                  y={effectiveObj.y * cell}
+                  width={hitWidth * cell}
+                  height={hitHeight * cell}
+                  fill="transparent"
+                />
+              )}
               {effectiveObj.kind === 'pixels'
                 ? effectiveObj.cells.map((c, i) =>
                     stitchRect(i, effectiveObj.x + c.dx, effectiveObj.y + c.dy, c.color, isSelected),

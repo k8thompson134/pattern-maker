@@ -5,7 +5,7 @@ import { DMC_PALETTE } from './dmcPalette'
 
 const DEFAULT_ACCENT_CODE = '310'
 
-function byCode(code: string): StitchColor {
+export function byCode(code: string): StitchColor {
   const found = DMC_PALETTE.find((c) => c.dmcCode === code)
   if (!found) throw new Error(`DMC ${code} missing from palette`)
   return found

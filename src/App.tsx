@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
+import { BorderThumb } from './components/BorderThumb'
 import { IconThumb } from './components/IconThumb'
 import { createEmptyProject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
@@ -17,6 +18,7 @@ import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
 import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
 import { replaceColor } from './lib/recolor'
+import { BORDERS, borderFits, borderHasAccent, buildBorder, defaultBorderColors } from './lib/borders'
 import { accentColorOf, iconHasAccent, iconPreviewColors, newIconColors, objectColors } from './lib/iconColors'
 import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
@@ -141,6 +143,10 @@ function App() {
   const [openIconGroup, setOpenIconGroup] = useState<string>(ICON_GROUPS[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [draftIconAccent, setDraftIconAccent] = useState(DMC_STARTER_COLORS[0])
+  const [draftBorderId, setDraftBorderId] = useState(BORDERS[0].id)
+  const [draftBorderColor, setDraftBorderColor] = useState(() => defaultBorderColors(BORDERS[0]).main)
+  const [draftBorderAccent, setDraftBorderAccent] = useState(() => defaultBorderColors(BORDERS[0]).accent)
+  const [borderMargin, setBorderMargin] = useState(1)
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
@@ -308,6 +314,28 @@ function App() {
     }
     setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
+  }
+
+  function selectDraftBorder(id: string) {
+    const colors = defaultBorderColors(BORDERS.find((b) => b.id === id) ?? BORDERS[0])
+    setDraftBorderId(id)
+    setDraftBorderColor(colors.main)
+    setDraftBorderAccent(colors.accent)
+  }
+
+  function addBorder() {
+    const def = BORDERS.find((b) => b.id === draftBorderId) ?? BORDERS[0]
+    const border = buildBorder(
+      def,
+      project.widthStitches,
+      project.heightStitches,
+      borderMargin,
+      draftBorderColor,
+      draftBorderAccent,
+    )
+    if (!border) return
+    setStampMode(false)
+    setProject((p) => ({ ...p, objects: [...p.objects, border], updatedAt: new Date().toISOString() }))
   }
 
   function updateTextObject(patch: Partial<Omit<TextObject, 'id' | 'kind'>>, coalesceKey?: string) {
@@ -749,6 +777,9 @@ function App() {
     setReplacingCode(null)
   }
 
+  const draftBorderDef = BORDERS.find((b) => b.id === draftBorderId) ?? BORDERS[0]
+  const draftBorderHasAccent = borderHasAccent(draftBorderDef)
+  const borderFitsCanvas = borderFits(draftBorderDef, project.widthStitches, project.heightStitches, borderMargin)
   const canvasBody = (
     <>
       <div className="size-input-row">
@@ -787,6 +818,60 @@ function App() {
         onBlur={commitSpiInput}
         onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       />
+      <label className="field-label">Border</label>
+      <div className="border-grid">
+        {BORDERS.map((b) => {
+          const active = draftBorderId === b.id
+          const colors = defaultBorderColors(b)
+          return (
+            <button
+              key={b.id}
+              type="button"
+              className={`border-thumb-btn${active ? ' border-thumb-btn--active' : ''}`}
+              onClick={() => selectDraftBorder(b.id)}
+            >
+              <BorderThumb
+                border={b}
+                color={active ? draftBorderColor.hex : colors.main.hex}
+                accentColor={active ? draftBorderAccent.hex : colors.accent.hex}
+              />
+              <span>{b.name}</span>
+            </button>
+          )
+        })}
+      </div>
+      <label className="field-label">{draftBorderHasAccent ? 'Main color' : 'Color'}</label>
+      <ColorSwatchPicker selected={draftBorderColor} onSelect={setDraftBorderColor} />
+      {draftBorderHasAccent && (
+        <>
+          <label className="field-label">Accent color</label>
+          <ColorSwatchPicker selected={draftBorderAccent} onSelect={setDraftBorderAccent} />
+        </>
+      )}
+      <label className="field-label">Distance from edge</label>
+      <div className="stepper-row">
+        <button
+          type="button"
+          className="stepper-btn"
+          disabled={borderMargin <= 0}
+          onClick={() => setBorderMargin(borderMargin - 1)}
+        >
+          −
+        </button>
+        <span className="stepper-value">{borderMargin} stitches</span>
+        <button
+          type="button"
+          className="stepper-btn"
+          disabled={borderMargin >= 10}
+          onClick={() => setBorderMargin(borderMargin + 1)}
+        >
+          +
+        </button>
+      </div>
+      {!borderFitsCanvas && <p className="field-hint">The canvas is too small for this border.</p>}
+      <button type="button" className="primary-btn" disabled={!borderFitsCanvas} onClick={addBorder}>
+        Add border
+      </button>
     </>
   )
   const draftFont = getFont(draftFontId)
@@ -931,7 +1016,7 @@ function App() {
     { key: 'icons', tab: 'Icons', title: 'Icons', body: iconsBody, defaultOpen: true },
     { key: 'stamp', tab: 'Stamp', title: 'Stamp (tiny decorations)', body: stampBody, defaultOpen: false },
     { key: 'draw', tab: 'Draw', title: 'Draw', body: drawBody, defaultOpen: false },
-    { key: 'canvas', tab: 'Canvas', title: 'Canvas Size', body: canvasBody, defaultOpen: false },
+    { key: 'canvas', tab: 'Canvas', title: 'Canvas & Border', body: canvasBody, defaultOpen: false },
   ]
 
   const dpad = (

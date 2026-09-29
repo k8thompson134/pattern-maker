@@ -32,13 +32,13 @@ These rules explain most of the behavior (and most of the limits) below.
   half, quarter, or three-quarter stitches, and no backstitch.
 - **A design is a stack of objects**, not a painted grid. Each object is one of:
   - **Text**: a phrase in one font, one color, one direction.
-  - **Icon**: one motif from the library, in one color.
+  - **Icon**: one motif from the library, in one color, or two for a two-tone motif (main and accent).
   - **Drawing**: a freehand set of stitches, where each stitch can be its own color.
 - **Stacking order matters.** Objects later in the stack cover earlier ones
   where they overlap. The exported chart is exactly what's visible on screen:
   covered stitches don't appear and aren't counted.
-- **Text and icons are single-color.** A two-tone motif has to be built as
-  two overlapping objects or as a drawing.
+- **Text is single-color; icons have at most two.** Two-tone icons carry a main and an accent color.
+  Anything with more colors has to be built from overlapping objects or as a drawing.
 - **Rotation turns the actual stitches** in 90° steps. What you see is exactly what exports.
 - **Size is whole-number scaling.** At size 2×, every stitch of a letter or
   icon becomes a 2×2 block; 3× gives 3×3, up to 6×. There are no in-between
@@ -52,6 +52,7 @@ These rules explain most of the behavior (and most of the limits) below.
 
 | Feature | Details |
 | --- | --- |
+| Borders | A premade border style (line, double line, dots, checker, zigzag, waves, scallop, diamonds, strung hearts, large hearts, vine, daisies, Greek key) wrapped around the canvas in one click, with mitered corners. Pick a main color (and an accent for two-tone styles) and a distance from the edge, 0 to 10 stitches. The result is an ordinary drawing: recolor, move, delete, or erase parts of it. Clicking inside the frame still selects objects underneath. |
 | Canvas size | Width and height in stitches, 1 to 500 each. Default 60×60. Shrinking the canvas pulls objects back inside the edges. |
 | Fabric count | Stitches per inch, 1 to 30 (e.g. 14 for 14-count Aida). Used only to show the finished size in inches. |
 | Finished size | Shown above the canvas, e.g. `60×60 stitches · 5.5"×5.5" at 11 stitches/inch`. This is the stitched area only, with no margin for framing or finishing. |
@@ -257,8 +258,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| No borders or frames | Borders are one of the most common sampler elements. Repeat gets partway there, but corners have to be built by hand. | **High** | Task #518 |
-| Icons are single-color | Most traditional motifs use 2–4 colors (a strawberry with green leaves, a mushroom with white spots). | **High** | |
+| Icons have at most two colors | Traditional motifs often use 3–4 colors (a strawberry with green leaves and white seeds). | Medium | |
 | Can't upload your own motif | Personal and inside-joke motifs are a stated core use case. | Medium | ✱ (v1.1) |
 | No saved personal motif library | Reusing motifs across projects. | Medium | ✱ (v1.1) |
 | Themed icon sets (holidays, baby, wedding, pride, pets…) | The broader audiences in scope.md all hinge on relevant motifs. | Medium | ✱ (later) |
@@ -305,4 +305,4 @@ highest-leverage next steps are:
 3. ~~**Lettering**~~ (lowercase, accents, punctuation, an italic font). Done. A hand-drawn serif or script alphabet is a remaining stretch.
 
 ~~Save-as / duplicate project (#543)~~ and ~~undo/redo (#542)~~ — done, see section 5.
-6. **Borders** (#518) and **multi-color motifs.**
+6. **Multi-color motifs** beyond two colors. Borders are done.

@@ -322,7 +322,8 @@ details.tool-section > summary:hover {
 }
 
 .toggle-btn--active,
-.icon-thumb-btn--active {
+.icon-thumb-btn--active,
+.border-thumb-btn--active {
   background: var(--accent-bg);
   border-color: var(--accent);
   color: var(--accent-strong);
@@ -501,6 +502,29 @@ details.tool-section > summary:hover {
 .icon-thumb-btn svg {
   max-width: 100%;
   max-height: 100%;
+}
+
+.border-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.border-thumb-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  font-size: 0.75rem;
+}
+
+.border-thumb-btn svg {
+  max-width: 100%;
+  padding: var(--space-2);
+  background: #f3efe6;
+  box-sizing: content-box;
 }
 
 .canvas-area {
