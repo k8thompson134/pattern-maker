@@ -2,7 +2,7 @@
 
 Every built-in icon, grouped as they appear in the Icons tool. Icons are at 1× size; the tool scales them 1×–6×. "Colors" are the defaults an icon starts with: a two-tone icon has a main and an accent color, and both can be changed after placing. Icons without a default take whatever color is picked. Icon ids are what saved designs refer to.
 
-There are 87 built-in icons in 11 groups, plus a **My icons** group for icons saved from the icon editor (see [`features.md`](features.md) §3.3). To add an icon to the built-in library, save it in the icon editor and paste the source snippet it shows into the matching `src/lib/icons*.ts` file.
+There are 92 built-in icons in 11 groups, plus a **My icons** group for icons saved from the icon editor (see [`features.md`](features.md) §3.3). To add an icon to the built-in library, save it in the icon editor and paste the source snippet it shows into the matching `src/lib/icons*.ts` file.
 
 ## Shapes (11)
 
@@ -86,7 +86,7 @@ There are 87 built-in icons in 11 groups, plus a **My icons** group for icons sa
 | Cloud | `cloud` | 11×6 | picked color |
 | Rainbow | `rainbow` | 15×7 | picked color |
 
-## Solidarity (8)
+## Solidarity (10)
 
 | Icon | Id | Size | Colors |
 | --- | --- | --- | --- |
@@ -98,8 +98,10 @@ There are 87 built-in icons in 11 groups, plus a **My icons** group for icons sa
 | Watermelon | `watermelon` | 13×6 | 666 Bright Red + accent 704 Chartreuse Bright |
 | Two Hearts | `two-hearts` | 12×9 | 899 Rose Medium + accent 335 Rose |
 | Lambda | `lambda` | 9×9 | 310 Black |
+| Shield | `shield` | 11×12 | 823 Navy Blue Dark + accent 798 Delft Blue Dark |
+| No symbol | `no-symbol` | 13×13 | 666 Bright Red |
 
-## Care & access (7)
+## Care & access (10)
 
 | Icon | Id | Size | Colors |
 | --- | --- | --- | --- |
@@ -108,6 +110,9 @@ There are 87 built-in icons in 11 groups, plus a **My icons** group for icons sa
 | Infinity | `infinity` | 11×5 | 310 Black |
 | Pill | `pill` | 5×10 | 899 Rose Medium + accent 3325 Baby Blue Light |
 | Sleep | `zzz` | 14×13 | 209 Lavender Dark + accent 552 Violet  Medium |
+| Cane | `cane` | 8×15 | 801 Coffee Brown Dark + accent 310 Black |
+| Heating pad | `heating-pad` | 13×11 | 666 Bright Red + accent 970 Pumpkin Light |
+| Speech bubble with ellipsis | `speech-ellipsis` | 13×9 | 414 Steel Gray Dark + accent 666 Bright Red |
 | Awareness Ribbon | `ribbon-solid` | 9×13 | 743 Yellow Medium |
 | Long COVID & Dysautonomia Ribbon | `ribbon-split` | 9×13 | 3812 Sea Green Very Dark + accent 414 Steel Gray Dark |
 
