@@ -74,13 +74,24 @@ describe('borders', () => {
 })
 
 describe('border corners', () => {
-  it('blank-corner styles leave the four corner squares empty', () => {
-    for (const def of BORDERS.filter((d) => d.blankCorners)) {
-      const t = def.rows.length
-      const cells = absolute(def, 41, 30)
-      const inCorner = cells.filter((c) => Math.min(c.x, 40 - c.x) < t && Math.min(c.y, 29 - c.y) < t)
-      expect(cells.length).toBeGreaterThan(0)
-      expect(inCorner).toHaveLength(0)
+  it('motif styles use a plain line column for the corners', () => {
+    for (const def of BORDERS.filter((d) => d.corner !== undefined)) {
+      const lineRows = def.rows.map((row) => !row.includes('0'))
+      const filled = def.rows.map((row) => row[def.corner!] !== '0')
+      expect(filled.some(Boolean)).toBe(true)
+      expect(filled.every((f, r) => !f || lineRows[r])).toBe(true)
+    }
+  })
+
+  it('never cuts a motif off at the ends of an edge, for odd and even lengths', () => {
+    const hearts = BORDERS.find((d) => d.id === 'hearts')!
+    for (const size of [40, 41, 42, 58, 59]) {
+      const cells = absolute(hearts, size, size)
+      const t = hearts.rows.length
+      for (const c of cells) {
+        const nearEnd = c.y < t && (c.x === t || c.x === size - 1 - t)
+        if (nearEnd && c.color.dmcCode === '310') expect(c.y).toBe(1)
+      }
     }
   })
 })
