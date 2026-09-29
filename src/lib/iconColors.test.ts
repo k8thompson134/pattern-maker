@@ -11,7 +11,6 @@ import { DMC_PALETTE } from './dmcPalette'
 import { DMC_STARTER_COLORS } from './dmcColors'
 
 const yellow = DMC_PALETTE.find((c) => c.dmcCode === '726')!
-const black = DMC_PALETTE.find((c) => c.dmcCode === '310')!
 const red = DMC_STARTER_COLORS[3]
 
 function bee(patch: Partial<IconObject> = {}): IconObject {

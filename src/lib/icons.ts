@@ -1,4 +1,6 @@
 import { BOTANICAL_ICONS } from './iconsBotanical'
+import { CARE_ICONS } from './iconsCare'
+import { SOLIDARITY_ICONS } from './iconsSolidarity'
 
 export type IconDef = {
   id: string
@@ -402,6 +404,8 @@ export const ICON_GROUPS = [
   { id: 'shapes', name: 'Shapes' },
   { id: 'botanical', name: 'Botanical' },
   { id: 'sky', name: 'Sky & weather' },
+  { id: 'solidarity', name: 'Solidarity' },
+  { id: 'care', name: 'Care & access' },
   { id: 'more', name: 'More' },
 ] as const
 
@@ -433,6 +437,8 @@ const CORE_GROUP: Record<string, string> = {
 export const ICON_LIBRARY: IconDef[] = [
   ...CORE_ICONS.map((i) => ({ ...i, group: CORE_GROUP[i.id] ?? 'more' })),
   ...BOTANICAL_ICONS,
+  ...SOLIDARITY_ICONS,
+  ...CARE_ICONS,
 ]
 
 // Retired from the picker but still resolvable, so saved projects that used them
