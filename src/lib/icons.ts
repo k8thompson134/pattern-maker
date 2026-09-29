@@ -1,7 +1,11 @@
 import { BOTANICAL_ICONS } from './iconsBotanical'
 import { CARE_ICONS } from './iconsCare'
+import { CELEBRATION_ICONS } from './iconsCelebration'
+import { FANTASY_ICONS } from './iconsFantasy'
 import { GREEK_ICONS } from './iconsGreek'
+import { HOBBIES_ICONS } from './iconsHobbies'
 import { SOLIDARITY_ICONS } from './iconsSolidarity'
+import { SPOOKY_ICONS } from './iconsSpooky'
 
 export type IconDef = {
   id: string
@@ -404,6 +408,10 @@ const CORE_ICONS: IconDef[] = [
 export const ICON_GROUPS = [
   { id: 'shapes', name: 'Shapes' },
   { id: 'botanical', name: 'Botanical' },
+  { id: 'celebration', name: 'Celebration' },
+  { id: 'hobbies', name: 'Cozy & hobbies' },
+  { id: 'fantasy', name: 'Gaming & fantasy' },
+  { id: 'spooky', name: 'Spooky & quirky' },
   { id: 'sky', name: 'Sky & weather' },
   { id: 'solidarity', name: 'Solidarity' },
   { id: 'care', name: 'Care & access' },
@@ -435,11 +443,16 @@ const CORE_GROUP: Record<string, string> = {
   mushroom: 'botanical',
   strawberry: 'botanical',
   cherries: 'botanical',
+  ghost: 'spooky',
 }
 
 export const ICON_LIBRARY: IconDef[] = [
   ...CORE_ICONS.map((i) => ({ ...i, group: CORE_GROUP[i.id] ?? 'more' })),
   ...BOTANICAL_ICONS,
+  ...CELEBRATION_ICONS,
+  ...HOBBIES_ICONS,
+  ...FANTASY_ICONS,
+  ...SPOOKY_ICONS,
   ...SOLIDARITY_ICONS,
   ...CARE_ICONS,
   ...GREEK_ICONS,

@@ -53,6 +53,13 @@ describe('renderIconToCells', () => {
     'peace',
     'butterfly-spotted',
     'watermelon',
+    'skull',
+    'tiny-ghost',
+    'tiny-bat',
+    'skull-crossbones',
+    'ribbon-solid',
+    'birthday-cake',
+    'dagger',
   ]
 
   it.each(SYMMETRIC_ICON_IDS)('%s is left-right mirror-symmetric', (id) => {
