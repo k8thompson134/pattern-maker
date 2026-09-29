@@ -39,3 +39,11 @@ export function newIconColors(icon: IconDef, picked: StitchColor): Pick<IconObje
     ...(iconHasAccent(icon) ? { color2: byCode(icon.accent ?? DEFAULT_ACCENT_CODE) } : {}),
   }
 }
+
+// Hex colors for picker thumbnails: the icon's real default stitches, or dark ink for icons that take whatever color is picked.
+export function iconPreviewColors(icon: IconDef): { color: string; accent: string } {
+  return {
+    color: icon.main ? byCode(icon.main).hex : '#333',
+    accent: byCode(icon.accent ?? DEFAULT_ACCENT_CODE).hex,
+  }
+}

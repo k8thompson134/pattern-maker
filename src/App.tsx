@@ -8,7 +8,7 @@ import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import type { BitmapFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { accentDroppedChars, measureText, unsupportedChars } from './lib/textRender'
-import { ICON_GROUPS, ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon } from './lib/icons'
+import { ICON_GROUPS, ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon, type IconDef } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
@@ -17,7 +17,7 @@ import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
 import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
 import { replaceColor } from './lib/recolor'
-import { accentColorOf, iconHasAccent, newIconColors, objectColors } from './lib/iconColors'
+import { accentColorOf, iconHasAccent, iconPreviewColors, newIconColors, objectColors } from './lib/iconColors'
 import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
@@ -140,6 +140,7 @@ function App() {
   const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
   const [openIconGroup, setOpenIconGroup] = useState<string>(ICON_GROUPS[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
+  const [draftIconAccent, setDraftIconAccent] = useState(DMC_STARTER_COLORS[0])
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
@@ -284,6 +285,13 @@ function App() {
     setDraftText('')
   }
 
+  function selectDraftIcon(icon: IconDef) {
+    const colors = newIconColors(icon, draftIconColor)
+    setDraftIconId(icon.id)
+    setDraftIconColor(colors.color)
+    if (colors.color2) setDraftIconAccent(colors.color2)
+  }
+
   function addIconObject() {
     const icon = getIcon(draftIconId)
     const { width, height } = measureIcon(icon, 1)
@@ -295,7 +303,8 @@ function App() {
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
       rotation: 0,
-      ...newIconColors(icon, draftIconColor),
+      color: draftIconColor,
+      ...(iconHasAccent(icon) ? { color2: draftIconAccent } : {}),
     }
     setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
@@ -809,6 +818,7 @@ function App() {
       </button>
     </>
   )
+  const draftIconHasAccent = iconHasAccent(getIcon(draftIconId))
   const iconsBody = (
     <>
       {ICON_GROUPS.map((group) => {
@@ -828,23 +838,39 @@ function App() {
             </button>
             {isOpen && (
               <div className="icon-grid">
-                {icons.map((icon) => (
-                  <button
-                    key={icon.id}
-                    type="button"
-                    className={`icon-thumb-btn${draftIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
-                    title={icon.name}
-                    onClick={() => setDraftIconId(icon.id)}
-                  >
-                    <IconThumb icon={icon} color="#ddd" />
-                  </button>
-                ))}
+                {icons.map((icon) => {
+                  const active = draftIconId === icon.id
+                  const preview = iconPreviewColors(icon)
+                  return (
+                    <button
+                      key={icon.id}
+                      type="button"
+                      className={`icon-thumb-btn${active ? ' icon-thumb-btn--active' : ''}`}
+                      title={icon.name}
+                      onClick={() => selectDraftIcon(icon)}
+                    >
+                      <IconThumb
+                        icon={icon}
+                        color={active ? draftIconColor.hex : preview.color}
+                        accentColor={active ? draftIconAccent.hex : preview.accent}
+                      />
+                    </button>
+                  )
+                })}
               </div>
             )}
           </div>
         )
       })}
+      <label className="field-label">{draftIconHasAccent ? 'Main color' : 'Color'}</label>
       <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
+      {draftIconHasAccent && (
+        <>
+          <label className="field-label">Accent color</label>
+          <p className="field-hint">This icon has a second color for its details.</p>
+          <ColorSwatchPicker selected={draftIconAccent} onSelect={setDraftIconAccent} />
+        </>
+      )}
       <button type="button" className="primary-btn" onClick={addIconObject}>
         Add icon
       </button>
@@ -1089,7 +1115,9 @@ function App() {
 
             {selectedCanTransform && (
               <>
-                <label className="field-label">Color</label>
+                <label className="field-label">
+                  {selectedObject.kind === 'icon' && iconHasAccent(getIcon(selectedObject.iconId)) ? 'Main color' : 'Color'}
+                </label>
                 <ColorSwatchPicker
                   selected={selectedObject.color}
                   onSelect={(c) =>
@@ -1099,6 +1127,7 @@ function App() {
                 {selectedObject.kind === 'icon' && iconHasAccent(getIcon(selectedObject.iconId)) && (
                   <>
                     <label className="field-label">Accent color</label>
+                    <p className="field-hint">This icon has a second color for its details.</p>
                     <ColorSwatchPicker
                       selected={accentColorOf(selectedObject)}
                       onSelect={(c) => updateIconObject({ color2: c })}
