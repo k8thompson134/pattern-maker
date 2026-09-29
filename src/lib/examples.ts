@@ -9,24 +9,33 @@ import type { CanvasObject, IconObject, Project, TextObject } from './types'
 const WIDTH = 60
 const HEIGHT = 52
 
-function centeredX(obj: CanvasObject): number {
-  return Math.floor((WIDTH - measureObject(obj).width) / 2)
+function centeredX(obj: CanvasObject, width: number): number {
+  return Math.floor((width - measureObject(obj).width) / 2)
 }
 
-function textLine(content: string, y: number): TextObject {
+function textLine(content: string, y: number, width = WIDTH, font = 'tiny-3x5', colorCode = '3799', scale = 1): TextObject {
   const line: TextObject = {
     id: createId(),
     kind: 'text',
     content,
-    font: 'tiny-3x5',
+    font,
     direction: 'horizontal',
-    scale: 1,
+    scale,
     x: 0,
     y,
     rotation: 0,
-    color: byCode('3799'),
+    color: byCode(colorCode),
   }
-  return { ...line, x: centeredX(line) }
+  return { ...line, x: centeredX(line, width) }
+}
+
+function centeredRow(icons: IconObject[], width: number, gap: number): void {
+  const total = icons.reduce((sum, o) => sum + measureObject(o).width, 0) + gap * (icons.length - 1)
+  let x = Math.floor((width - total) / 2)
+  for (const o of icons) {
+    o.x = x
+    x += measureObject(o).width + gap
+  }
 }
 
 function icon(iconId: string, x: number, bottom: number): IconObject {
@@ -76,3 +85,69 @@ export function buildCozyExample(zoom: number): Project {
     updatedAt: new Date().toISOString(),
   }
 }
+
+export function buildGardenExample(zoom: number): Project {
+  const width = 68
+  const height = 66
+  const vine = BORDERS.find((b) => b.id === 'vine')!
+  const border = buildBorder(vine, width, height, 0, byCode(vine.main), byCode(vine.accent))!
+
+  const flowers = ['tulip', 'daisy', 'sunflower', 'lavender'].map((id) => icon(id, 0, 35))
+  centeredRow(flowers, width, 4)
+  const critters = ['ladybug', 'butterfly-spotted', 'bee-striped'].map((id) => icon(id, 0, 51))
+  centeredRow(critters, width, 6)
+
+  return {
+    id: createId(),
+    name: 'Garden sampler',
+    widthStitches: width,
+    heightStitches: height,
+    fabric: DEFAULT_FABRIC,
+    objects: [
+      border,
+      textLine('my garden', 10, width, 'mixed-5x9', '701'),
+      ...flowers,
+      ...critters,
+      textLine('GROW SLOWLY', 56, width, 'tiny-3x5', '3799'),
+    ],
+    zoom,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export function buildWelcomeExample(zoom: number): Project {
+  const width = 60
+  const height = 64
+  const scallop = BORDERS.find((b) => b.id === 'scallop')!
+  const border = buildBorder(scallop, width, height, 0, byCode(scallop.main), byCode(scallop.accent))!
+
+  const sky = [
+    { ...icon('moon', 0, 31), color: byCode('726') },
+    { ...icon('star', 0, 31), color: byCode('3607') },
+    { ...icon('cloud', 0, 31), color: byCode('798') },
+  ]
+  centeredRow(sky, width, 5)
+
+  return {
+    id: createId(),
+    name: 'Birth announcement',
+    widthStitches: width,
+    heightStitches: height,
+    fabric: DEFAULT_FABRIC,
+    objects: [
+      border,
+      textLine('welcome', 10, width, 'mixed-5x9', '798'),
+      ...sky,
+      textLine('Ava June', 36, width, 'mixed-5x9', '310'),
+      textLine('MARCH 14 2027', 50, width, 'tiny-3x5', '3799'),
+    ],
+    zoom,
+    updatedAt: new Date().toISOString(),
+  }
+}
+
+export const EXAMPLES = [
+  { id: 'cozy', name: 'Cozy corner', build: buildCozyExample },
+  { id: 'garden', name: 'Garden sampler', build: buildGardenExample },
+  { id: 'welcome', name: 'Birth announcement', build: buildWelcomeExample },
+]

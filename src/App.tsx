@@ -4,7 +4,7 @@ import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { BorderThumb } from './components/BorderThumb'
 import { IconThumb } from './components/IconThumb'
 import { createEmptyProject, type CanvasObject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
-import { buildCozyExample } from './lib/examples'
+import { EXAMPLES } from './lib/examples'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import type { BitmapFont } from './lib/fonts'
@@ -800,8 +800,9 @@ function App() {
     swapProject({ ...createEmptyProject('Untitled'), zoom: project.zoom })
   }
 
-  function loadExample() {
-    const example = buildCozyExample(project.zoom)
+  function loadExample(id: string) {
+    const example = EXAMPLES.find((e) => e.id === id)?.build(project.zoom)
+    if (!example) return
     saveProject(example)
     setProjectList(listProjects())
     swapProject(example)
@@ -1273,9 +1274,21 @@ function App() {
           <button type="button" onClick={saveProjectAs}>
             Save as…
           </button>
-          <button type="button" onClick={loadExample} title="Open a ready-made example design in a new slot">
-            Load example
-          </button>
+          <select
+            aria-label="Load example"
+            title="Open a ready-made example design in a new slot"
+            value=""
+            onChange={(e) => loadExample(e.target.value)}
+          >
+            <option value="" disabled>
+              Load example…
+            </option>
+            {EXAMPLES.map((e) => (
+              <option key={e.id} value={e.id}>
+                {e.name}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             onClick={() => {

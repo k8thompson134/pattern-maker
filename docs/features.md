@@ -58,7 +58,7 @@ These rules explain most of the behavior (and most of the limits) below.
 | Finished size | Shown above the canvas, e.g. `60×60 stitches · 5.5"×5.5" at 11 stitches/inch`. This is the stitched area only, with no margin for framing or finishing. |
 | Zoom | 20% to 250% in 25% steps. On first load, a small screen zooms out to fit. |
 | New project | Starts a blank 60×60 canvas as a new design. If the current design has anything on it, an inline prompt confirms first ("Start new design" / "Cancel"); the current design stays saved and is reachable from the Design menu. |
-| Load example | Opens a ready-made "Cozy corner" design (hearts border, text, two-tone icons, and stamps) as a new design, leaving the current one untouched. |
+| Load example | A dropdown of ready-made designs, each opened as a new design that leaves the current one untouched: **Cozy corner** (hearts border, text, two-tone icons, stamps), **Garden sampler** (vine border, botanical icons, critters), and **Birth announcement** (scalloped border; change the name and date by editing the text). |
 | Project name | Not editable in the UI. The name is set only as the PDF title at export time. |
 
 ### 3.2 Text
@@ -280,7 +280,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | Can't upload an image as a motif | Personal and inside-joke motifs are a stated core use case. The icon editor covers drawing one by hand in two colors, but there's no image import. | Medium | ✱ (v1.1) |
 | Personal icons stay in one browser | The My icons group works across designs but isn't part of a project and doesn't sync between devices. | Low | ✱ (v1.1) |
 | Fewer themed icons for some audiences (baby, wedding, pets, more holidays) | Solidarity, care, celebration, hobbies, fantasy, spooky, botanical, and Greek letters exist. The broader audiences in scope.md hinge on relevant motifs. | Low | ✱ (later) |
-| Only one ready-made example | Load example opens a single Cozy corner design. Templates for the life-event pieces the tool targets (birth announcement, wedding sampler) would be a faster start. | Low | ✱ (later) |
+| Few ready-made examples | Load example offers three designs. More life-event pieces the tool targets (wedding sampler, graduation) would be a faster start. | Low | ✱ (later) |
 
 ### 6.6 Drawing and editing
 
