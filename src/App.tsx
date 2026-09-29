@@ -972,7 +972,7 @@ function App() {
             title={icon.name}
             onClick={() => setDraftMiniIconId(icon.id)}
           >
-            <IconThumb icon={icon} color="#ddd" pixelSize={6} />
+            <IconThumb icon={icon} color={draftIconColor.hex} pixelSize={6} />
           </button>
         ))}
       </div>
