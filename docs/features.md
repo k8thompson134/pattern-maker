@@ -73,7 +73,8 @@ These rules explain most of the behavior (and most of the limits) below.
 
 ### 3.3 Icons
 
-The library is organized into collapsible groups (shapes, botanical, sky and
+The library is organized into collapsible groups (shapes, botanical, celebration,
+cozy and hobbies, gaming and fantasy, spooky and quirky, sky and
 weather, solidarity, care and access, Greek letters, and more), each icon roughly
 7–14 stitches across at 1×. An icon has one color, or two when its design has
 accent details (a bee's stripes, a heart's highlight); the picker shows the
