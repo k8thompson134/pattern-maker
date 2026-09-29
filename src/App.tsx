@@ -22,7 +22,7 @@ import {
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
-import { alignObject, alignUnits, countUnits, distributeUnits, type Alignment, type DistributeAxis } from './lib/align'
+import { alignUnits, countUnits, distributeUnits, type Alignment, type DistributeAxis } from './lib/align'
 import { splitTextObject } from './lib/splitText'
 import { createEmptyPixelObject, eraseCells, paintCells, type GridCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
@@ -33,6 +33,7 @@ import { accentColorOf, iconHasAccent, iconPreviewColors, newIconColors, objectC
 import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
+import { inkUnionBounds } from './lib/inkBounds'
 import { useIsMobile } from './useIsMobile'
 import './App.css'
 
@@ -164,7 +165,8 @@ function App() {
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
-  const [alignTarget, setAlignTarget] = useState<'selection' | 'canvas'>('selection')
+  const [alignTarget, setAlignTarget] = useState<string>('selection')
+  const [alignMargin, setAlignMargin] = useState(0)
   const [confirmingNewProject, setConfirmingNewProject] = useState(false)
   const [confirmingDeleteProject, setConfirmingDeleteProject] = useState(false)
   const [projectList, setProjectList] = useState(() => listProjects())
@@ -564,17 +566,6 @@ function App() {
     }
   }
 
-  function alignSelectedObject(alignment: Alignment) {
-    if (!selectedObject) return
-    setProject((p) => ({
-      ...p,
-      objects: p.objects.map((o) =>
-        o.id === selectedObject.id ? alignObject(o, p.widthStitches, p.heightStitches, alignment) : o,
-      ),
-      updatedAt: new Date().toISOString(),
-    }))
-  }
-
   function applyMovedObjects(moved: CanvasObject[]) {
     const byId = new Map(moved.map((o) => [o.id, o]))
     setProject((p) => {
@@ -589,9 +580,38 @@ function App() {
 
   const selectionUnitCount = countUnits(selectedObjects)
 
+  const alignTargets = (() => {
+    const seenGroups = new Set<string>()
+    const selected = new Set(selectedIds)
+    const targets: { id: string; label: string; members: CanvasObject[] }[] = []
+    for (const o of project.objects) {
+      if (selected.has(o.id) || (o.kind === 'pixels' && o.hollow)) continue
+      const members = o.groupId ? project.objects.filter((m) => m.groupId === o.groupId) : [o]
+      if (members.some((m) => selected.has(m.id))) continue
+      if (o.groupId) {
+        if (seenGroups.has(o.groupId)) continue
+        seenGroups.add(o.groupId)
+      }
+      const name = o.groupId ? `Group of ${members.length}` : o.kind === 'text' ? `"${o.content}"` : o.kind === 'icon' ? getIcon(o.iconId).name : 'Drawing'
+      targets.push({ id: o.id, label: name, members })
+    }
+    return targets
+  })()
+  const alignTargetChoice = alignTarget === 'selection' && selectionUnitCount > 1 ? 'selection' : alignTargets.some((t) => t.id === alignTarget) ? alignTarget : 'canvas'
+
   function alignSelection(alignment: Alignment) {
-    const canvasBox = { x: 0, y: 0, width: project.widthStitches, height: project.heightStitches }
-    const reference = selectionUnitCount > 1 && alignTarget === 'selection' ? selectionBounds(selectedObjects)! : canvasBox
+    const margin = Math.max(0, Math.min(alignMargin, Math.floor((Math.min(project.widthStitches, project.heightStitches) - 1) / 2)))
+    let reference = {
+      x: margin,
+      y: margin,
+      width: project.widthStitches - 2 * margin,
+      height: project.heightStitches - 2 * margin,
+    }
+    if (alignTargetChoice === 'selection') {
+      reference = inkUnionBounds(selectedObjects)!
+    } else if (alignTargetChoice !== 'canvas') {
+      reference = inkUnionBounds(alignTargets.find((t) => t.id === alignTargetChoice)!.members)!
+    }
     applyMovedObjects(alignUnits(selectedObjects, alignment, reference, project.widthStitches, project.heightStitches))
   }
 
@@ -915,6 +935,55 @@ function App() {
   const draftBorderDef = BORDERS.find((b) => b.id === draftBorderId) ?? BORDERS[0]
   const draftBorderHasAccent = borderHasAccent(draftBorderDef)
   const borderFitsCanvas = borderFits(draftBorderDef, project.widthStitches, project.heightStitches, borderMargin)
+  const alignControls = (
+    <>
+      <label className="field-label">Align to</label>
+      <select aria-label="Align to" value={alignTargetChoice} onChange={(e) => setAlignTarget(e.target.value)}>
+        <option value="canvas">Canvas</option>
+        {selectionUnitCount > 1 && <option value="selection">Selection</option>}
+        {alignTargets.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.label}
+          </option>
+        ))}
+      </select>
+      {alignTargetChoice === 'canvas' && (
+        <label className="field-label">
+          Margin (stitches){' '}
+          <input
+            type="number"
+            min={0}
+            max={20}
+            value={alignMargin}
+            onChange={(e) => setAlignMargin(Math.max(0, Math.floor(Number(e.target.value)) || 0))}
+          />
+        </label>
+      )}
+      <div className="button-row">
+        <button type="button" onClick={() => alignSelection('left')}>
+          Left
+        </button>
+        <button type="button" onClick={() => alignSelection('center-h')}>
+          Center
+        </button>
+        <button type="button" onClick={() => alignSelection('right')}>
+          Right
+        </button>
+      </div>
+      <div className="button-row">
+        <button type="button" onClick={() => alignSelection('top')}>
+          Top
+        </button>
+        <button type="button" onClick={() => alignSelection('center-v')}>
+          Middle
+        </button>
+        <button type="button" onClick={() => alignSelection('bottom')}>
+          Bottom
+        </button>
+      </div>
+    </>
+  )
+
   const canvasBody = (
     <>
       <div className="size-input-row">
@@ -1506,29 +1575,7 @@ function App() {
                   </div>
                 </>
               )}
-              <label className="field-label">Align</label>
-              <div className="button-row">
-                <button type="button" onClick={() => alignSelectedObject('left')}>
-                  Left
-                </button>
-                <button type="button" onClick={() => alignSelectedObject('center-h')}>
-                  Center
-                </button>
-                <button type="button" onClick={() => alignSelectedObject('right')}>
-                  Right
-                </button>
-              </div>
-              <div className="button-row">
-                <button type="button" onClick={() => alignSelectedObject('top')}>
-                  Top
-                </button>
-                <button type="button" onClick={() => alignSelectedObject('center-v')}>
-                  Middle
-                </button>
-                <button type="button" onClick={() => alignSelectedObject('bottom')}>
-                  Bottom
-                </button>
-              </div>
+              {alignControls}
               <label className="field-label">Layer</label>
               <div className="button-row">
                 <button type="button" title="Send backward" onClick={() => reorderSelectedObject('backward')}>
@@ -1640,43 +1687,7 @@ function App() {
 
             <details className="selected-subsection">
               <summary>Align &amp; distribute</summary>
-              {selectionUnitCount > 1 && (
-                <div className="button-row">
-                  {(['selection', 'canvas'] as const).map((target) => (
-                    <button
-                      key={target}
-                      type="button"
-                      className={`toggle-btn${alignTarget === target ? ' toggle-btn--active' : ''}`}
-                      onClick={() => setAlignTarget(target)}
-                    >
-                      {target === 'selection' ? 'To selection' : 'To canvas'}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <label className="field-label">Align</label>
-              <div className="button-row">
-                <button type="button" onClick={() => alignSelection('left')}>
-                  Left
-                </button>
-                <button type="button" onClick={() => alignSelection('center-h')}>
-                  Center
-                </button>
-                <button type="button" onClick={() => alignSelection('right')}>
-                  Right
-                </button>
-              </div>
-              <div className="button-row">
-                <button type="button" onClick={() => alignSelection('top')}>
-                  Top
-                </button>
-                <button type="button" onClick={() => alignSelection('center-v')}>
-                  Middle
-                </button>
-                <button type="button" onClick={() => alignSelection('bottom')}>
-                  Bottom
-                </button>
-              </div>
+              {alignControls}
               <label className="field-label">Space evenly</label>
               <div className="button-row">
                 <button type="button" disabled={selectionUnitCount < 3} onClick={() => distributeSelection('horizontal')}>

@@ -1,45 +1,14 @@
 import type { CanvasObject } from './types'
-import { clampToCanvas, measureObject } from './objectMeasure'
+import { inkUnionBounds } from './inkBounds'
 import { clampSelectionDelta, selectionBounds, type Bounds } from './selection'
 
 export type Alignment = 'left' | 'center-h' | 'right' | 'top' | 'center-v' | 'bottom'
 
-export function alignObject<T extends CanvasObject>(
-  obj: T,
-  canvasWidth: number,
-  canvasHeight: number,
-  alignment: Alignment,
-): T {
-  const { width, height } = measureObject(obj)
-  let next: T = obj
-
-  switch (alignment) {
-    case 'left':
-      next = { ...obj, x: 0 }
-      break
-    case 'center-h':
-      next = { ...obj, x: Math.floor((canvasWidth - width) / 2) }
-      break
-    case 'right':
-      next = { ...obj, x: canvasWidth - width }
-      break
-    case 'top':
-      next = { ...obj, y: 0 }
-      break
-    case 'center-v':
-      next = { ...obj, y: Math.floor((canvasHeight - height) / 2) }
-      break
-    case 'bottom':
-      next = { ...obj, y: canvasHeight - height }
-      break
-  }
-
-  return clampToCanvas(next, canvasWidth, canvasHeight)
-}
-
 export type DistributeAxis = 'horizontal' | 'vertical'
 
-type Unit = { members: CanvasObject[]; bounds: Bounds }
+// `bounds` is the declared box (what must stay on the canvas); `ink` is the box around the
+// actual stitches (what aligning and spacing measure, so blank margins don't skew them).
+type Unit = { members: CanvasObject[]; bounds: Bounds; ink: Bounds }
 
 // A group moves as one unit — aligning or spacing its members individually would
 // break up the arrangement — so each groupId is one unit and every ungrouped object
@@ -60,7 +29,7 @@ function toUnits(objects: CanvasObject[]): Unit[] {
       units.push(created)
     }
   }
-  return units.map((members) => ({ members, bounds: selectionBounds(members)! }))
+  return units.map((members) => ({ members, bounds: selectionBounds(members)!, ink: inkUnionBounds(members)! }))
 }
 
 function shifted(objects: CanvasObject[], deltas: Map<CanvasObject, { dx: number; dy: number }>): CanvasObject[] {
@@ -74,8 +43,8 @@ export function countUnits(objects: CanvasObject[]): number {
   return toUnits(objects).length
 }
 
-// Moves every unit so its edge/center matches the reference box (the selection's
-// bounds, or the canvas). Returns the objects in the same order.
+// Moves every unit so its stitches' edge/center matches the reference box (a selection's
+// ink bounds, the canvas, or another object). Returns the objects in the same order.
 export function alignUnits(
   objects: CanvasObject[],
   alignment: Alignment,
@@ -84,7 +53,7 @@ export function alignUnits(
   canvasHeight: number,
 ): CanvasObject[] {
   const deltas = new Map<CanvasObject, { dx: number; dy: number }>()
-  for (const { members, bounds: b } of toUnits(objects)) {
+  for (const { members, bounds, ink: b } of toUnits(objects)) {
     let dx = 0
     let dy = 0
     switch (alignment) {
@@ -107,7 +76,7 @@ export function alignUnits(
         dy = reference.y + reference.height - b.height - b.y
         break
     }
-    const clamped = clampSelectionDelta(b, dx, dy, canvasWidth, canvasHeight)
+    const clamped = clampSelectionDelta(bounds, dx, dy, canvasWidth, canvasHeight)
     for (const m of members) deltas.set(m, clamped)
   }
   return shifted(objects, deltas)
@@ -120,8 +89,8 @@ export function distributeUnits(objects: CanvasObject[], axis: DistributeAxis): 
   const units = toUnits(objects)
   if (units.length < 3) return objects
 
-  const start = (u: Unit) => (axis === 'horizontal' ? u.bounds.x : u.bounds.y)
-  const size = (u: Unit) => (axis === 'horizontal' ? u.bounds.width : u.bounds.height)
+  const start = (u: Unit) => (axis === 'horizontal' ? u.ink.x : u.ink.y)
+  const size = (u: Unit) => (axis === 'horizontal' ? u.ink.width : u.ink.height)
   const ordered = [...units].sort((a, b) => start(a) - start(b))
 
   const first = ordered[0]
