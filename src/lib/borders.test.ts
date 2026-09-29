@@ -60,7 +60,7 @@ describe('borders', () => {
         const [x, y] = k.split(',').map(Number)
         return `${40 - x},${y}`
       })
-      if (['greek-key', 'checker', 'vine'].includes(def.id)) continue
+      if (['greek-key', 'checker', 'vine'].includes(def.id) || def.corner !== undefined) continue
       expect([def.id, flipped.every((k) => top.has(k))]).toEqual([def.id, true])
     }
   })
@@ -70,6 +70,29 @@ describe('borders', () => {
     expect(borderFits(vine, 9, 9, 0)).toBe(false)
     expect(buildBorder(vine, 9, 9, 0, main, accent)).toBeNull()
     expect(borderFits(vine, 20, 20, 6)).toBe(false)
+  })
+})
+
+describe('border sizes', () => {
+  it('builds inside the canvas with no duplicate stitches at every size and margin', () => {
+    for (const def of BORDERS) {
+      for (let w = 1; w <= 60; w++) {
+        for (let h = 1; h <= 60; h += 7) {
+          for (const margin of [0, 1, 3]) {
+            const b = buildBorder(def, w, h, margin, main, accent)
+            expect(b !== null).toBe(borderFits(def, w, h, margin))
+            if (!b) continue
+            const xs = b.cells.map((q) => b.x + q.dx)
+            const ys = b.cells.map((q) => b.y + q.dy)
+            expect(Math.min(...xs)).toBeGreaterThanOrEqual(margin)
+            expect(Math.max(...xs)).toBeLessThanOrEqual(w - 1 - margin)
+            expect(Math.min(...ys)).toBeGreaterThanOrEqual(margin)
+            expect(Math.max(...ys)).toBeLessThanOrEqual(h - 1 - margin)
+            expect(new Set(b.cells.map((q) => `${q.dx},${q.dy}`)).size).toBe(b.cells.length)
+          }
+        }
+      }
+    }
   })
 })
 
@@ -83,14 +106,17 @@ describe('border corners', () => {
     }
   })
 
-  it('never cuts a motif off at the ends of an edge, for odd and even lengths', () => {
-    const hearts = BORDERS.find((d) => d.id === 'hearts')!
-    for (const size of [40, 41, 42, 58, 59]) {
-      const cells = absolute(hearts, size, size)
-      const t = hearts.rows.length
-      for (const c of cells) {
-        const nearEnd = c.y < t && (c.x === t || c.x === size - 1 - t)
-        if (nearEnd && c.color.dmcCode === '310') expect(c.y).toBe(1)
+  it('never cuts a motif off beside a corner, at any canvas size', () => {
+    for (const def of BORDERS.filter((d) => d.corner !== undefined)) {
+      const t = def.rows.length
+      const lineRow = def.rows.map((row) => !row.includes('0'))
+      for (let size = 2 * t + 2 * (def.rows[0].length + t); size <= 90; size++) {
+        for (const c of absolute(def, size, size + 3)) {
+          const besideCorner = c.y < t && (c.x === t || c.x === size - 1 - t)
+          const besideCornerSide = c.x < t && (c.y === t || c.y === size + 2 - t)
+          if (besideCorner) expect([def.id, size, lineRow[c.y]]).toEqual([def.id, size, true])
+          if (besideCornerSide) expect([def.id, size, lineRow[c.x]]).toEqual([def.id, size, true])
+        }
       }
     }
   })

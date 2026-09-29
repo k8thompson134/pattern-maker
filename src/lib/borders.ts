@@ -84,24 +84,46 @@ function mod(n: number, m: number): number {
   return ((n % m) + m) % m
 }
 
-// Picks the tile phase for one run of stitches. Plain tiles are mirror-symmetric about the run's center when
-// possible, else centered. Tiles with a corner column instead prefer both ends to land on plain connecting line
-// (no motif cut off at a corner), then symmetry.
-function edgePhase(def: BorderDef, length: number): number {
+type EdgePlan = { lead: number; run: number; phase: number }
+
+// Plans one edge, as a stretch of `length` stitches between the corner squares. Plain tiles use the whole edge,
+// mirror-symmetric about its center when possible, else centered. Tiles with a corner column tile motifs over a
+// `run` that starts `lead` stitches in, padding either end with plain connecting line, so no motif is ever cut
+// off at a corner; the plan uses as little padding as it can and keeps both ends balanced.
+function planEdge(def: BorderDef, length: number): EdgePlan {
   const p = def.rows[0].length
-  const centered = Math.floor((p - length) / 2)
-  const candidates = [centered, ...Array.from({ length: p }, (_, i) => i)]
-  const isSymmetric = (o: number) =>
+  const isSymmetric = (o: number, run: number) =>
     def.rows.every((row) =>
-      Array.from({ length }, (_, i) => row[mod(i + o, p)] === row[mod(length - 1 - i + o, p)]).every(Boolean),
+      Array.from({ length: run }, (_, i) => row[mod(i + o, p)] === row[mod(run - 1 - i + o, p)]).every(Boolean),
     )
-  if (def.corner === undefined) return candidates.find(isSymmetric) ?? centered
+  if (def.corner === undefined) {
+    const centered = Math.floor((p - length) / 2)
+    const phase = [centered, ...Array.from({ length: p }, (_, i) => i)].find((o) => isSymmetric(o, length))
+    return { lead: 0, run: length, phase: phase ?? centered }
+  }
 
   const lineRow = def.rows.map((row) => !row.includes('0'))
-  const motifCells = (col: number) =>
-    def.rows.filter((row, r) => !lineRow[r] && row[mod(col, p)] !== '0').length
-  const cost = (o: number) => 2 * (motifCells(o) + motifCells(o + length - 1)) + (isSymmetric(o) ? 0 : 1)
-  return candidates.reduce((best, o) => (cost(o) < cost(best) ? o : best))
+  const motif = (col: number) => def.rows.filter((row, r) => !lineRow[r] && row[mod(col, p)] !== '0').length
+  const plainFrom = (o: number, run: number, step: 1 | -1) => {
+    let n = 0
+    while (n < run && motif(step === 1 ? o + n : o + run - 1 - n) === 0) n++
+    return n
+  }
+
+  let best: (EdgePlan & { cost: number }) | null = null
+  for (let lead = 0; lead < p && lead <= length; lead++) {
+    for (let trail = 0; trail < p && lead + trail <= length; trail++) {
+      const run = length - lead - trail
+      for (let o = 0; o < p; o++) {
+        if (run > 0 && (motif(o) > 0 || motif(o + run - 1) > 0)) continue
+        const before = lead + (run > 0 ? plainFrom(o, run, 1) : 0)
+        const after = trail + (run > 0 ? plainFrom(o, run, -1) : 0)
+        const cost = 2 * (lead + trail) + Math.abs(before - after) + (lead === trail && isSymmetric(o, run) ? 0 : 1)
+        if (best === null || cost < best.cost) best = { lead, run, phase: o, cost }
+      }
+    }
+  }
+  return best ?? { lead: 0, run: 0, phase: 0 }
 }
 
 // Wraps the tile around the canvas edge, inset by `margin`. Corners are mitered: each cell takes the tile
@@ -121,8 +143,8 @@ export function buildBorder(
   const h = height - 2 * margin
   const cells: PixelCell[] = []
   const inset = def.corner === undefined ? 0 : t
-  const phaseH = edgePhase(def, w - 2 * inset)
-  const phaseV = edgePhase(def, h - 2 * inset)
+  const planH = planEdge(def, w - 2 * inset)
+  const planV = planEdge(def, h - 2 * inset)
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
@@ -133,8 +155,10 @@ export function buildBorder(
       const horizontal = side < 2
       const row = side === 1 && def.upright ? t - 1 - d : d
       const inCorner = def.corner !== undefined && Math.min(x, w - 1 - x) < t && Math.min(y, h - 1 - y) < t
-      const along = (horizontal ? x : y) - inset
-      const column = inCorner ? def.corner! : mod(along + (horizontal ? phaseH : phaseV), p)
+      const plan = horizontal ? planH : planV
+      const along = (horizontal ? x : y) - inset - plan.lead
+      const inRun = along >= 0 && along < plan.run
+      const column = inCorner || !inRun ? def.corner! : mod(along + plan.phase, p)
       const ch = def.rows[row][column]
       if (ch === '0') continue
       cells.push({ dx: x, dy: y, color: ch === '2' ? accent : main })
