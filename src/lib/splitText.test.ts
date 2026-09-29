@@ -41,6 +41,17 @@ describe('splitTextObject', () => {
     }
   })
 
+  it('stays identical to the whole string when mirrored, for every rotation', () => {
+    for (const rotation of [0, 90, 180, 270]) {
+      for (const [mirrorH, mirrorV] of [[true, false], [false, true], [true, true]]) {
+        for (const direction of ['horizontal', 'vertical'] as TextDirection[]) {
+          const source = text({ font: 'mixed-5x9', direction, scale: 2, rotation, mirrorH, mirrorV, content: 'Café Bee' })
+          expect(stitches(splitTextObject(source)), `${direction} @${rotation} H${mirrorH} V${mirrorV}`).toEqual(stitches([source]))
+        }
+      }
+    }
+  })
+
   it('makes one object per non-space character, each with a fresh id', () => {
     const letters = splitTextObject(text({ content: 'A B  C' }))
     expect(letters.map((l) => l.content)).toEqual(['A', 'B', 'C'])

@@ -19,6 +19,9 @@ export type TextObject = {
   x: number
   y: number
   rotation: number
+  // Mirroring is applied after rotation, in screen space.
+  mirrorH?: boolean
+  mirrorV?: boolean
   color: StitchColor
 }
 
@@ -31,6 +34,8 @@ export type IconObject = {
   x: number
   y: number
   rotation: number
+  mirrorH?: boolean
+  mirrorV?: boolean
   color: StitchColor
   color2?: StitchColor
 }

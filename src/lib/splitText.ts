@@ -13,6 +13,8 @@ export function splitTextObject(obj: TextObject): TextObject[] {
   const chars = [...obj.content.normalize('NFC')]
   const whole = measureText(obj.content, font, obj.direction, obj.scale)
   const rotation = ((obj.rotation % 360) + 360) % 360
+  const wholeW = rotation % 180 !== 0 ? whole.height : whole.width
+  const wholeH = rotation % 180 !== 0 ? whole.width : whole.height
   const gap = LETTER_SPACING * obj.scale
   const letters: TextObject[] = []
 
@@ -35,6 +37,12 @@ export function splitTextObject(obj: TextObject): TextObject[] {
       dx = oy
       dy = whole.width - ox - size.width
     }
+
+    const quarter = rotation % 180 !== 0
+    const letterW = quarter ? size.height : size.width
+    const letterH = quarter ? size.width : size.height
+    if (obj.mirrorH) dx = wholeW - dx - letterW
+    if (obj.mirrorV) dy = wholeH - dy - letterH
 
     letters.push({ ...obj, id: createId(), content: char, x: obj.x + dx, y: obj.y + dy })
   })

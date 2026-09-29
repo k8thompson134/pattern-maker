@@ -34,6 +34,7 @@ import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
 import { inkUnionBounds } from './lib/inkBounds'
+import { mirrorObjects, type MirrorAxis } from './lib/mirror'
 import { useIsMobile } from './useIsMobile'
 import './App.css'
 
@@ -607,6 +608,14 @@ function App() {
   })()
   const alignTargetChoice = alignTarget === 'selection' && selectionUnitCount > 1 ? 'selection' : alignTargets.some((t) => t.id === alignTarget) ? alignTarget : 'canvas'
 
+  function mirrorSelection(axis: MirrorAxis) {
+    if (selectedObjects.length === 0) return
+    const flipped = new Map(
+      mirrorObjects(selectedObjects, axis, project.widthStitches, project.heightStitches).map((o) => [o.id, o]),
+    )
+    setProject((p) => ({ ...p, objects: p.objects.map((o) => flipped.get(o.id) ?? o), updatedAt: new Date().toISOString() }))
+  }
+
   function toggleSnap() {
     const next = !snapEnabled
     setSnapEnabled(next)
@@ -953,6 +962,20 @@ function App() {
   const draftBorderDef = BORDERS.find((b) => b.id === draftBorderId) ?? BORDERS[0]
   const draftBorderHasAccent = borderHasAccent(draftBorderDef)
   const borderFitsCanvas = borderFits(draftBorderDef, project.widthStitches, project.heightStitches, borderMargin)
+  const flipControls = (
+    <>
+      <label className="field-label">Flip</label>
+      <div className="button-row">
+        <button type="button" title="Mirror left to right" onClick={() => mirrorSelection('horizontal')}>
+          Left ↔ Right
+        </button>
+        <button type="button" title="Mirror top to bottom" onClick={() => mirrorSelection('vertical')}>
+          Top ↕ Bottom
+        </button>
+      </div>
+    </>
+  )
+
   const alignControls = (
     <>
       <label className="field-label">Align to</label>
@@ -1601,6 +1624,7 @@ function App() {
                   </div>
                 </>
               )}
+              {flipControls}
               {alignControls}
               <label className="field-label">Layer</label>
               <div className="button-row">
@@ -1713,6 +1737,7 @@ function App() {
 
             <details className="selected-subsection">
               <summary>Align &amp; distribute</summary>
+              {flipControls}
               {alignControls}
               <label className="field-label">Space evenly</label>
               <div className="button-row">

@@ -126,7 +126,9 @@ you can move or delete afterward.
 | Move | Drag, the on-screen arrow pad (1 stitch per tap), or the keyboard arrow keys (Shift+arrow = 5 stitches). Objects can't leave the canvas. |
 | Resize | Drag a corner handle, or use the − / + size buttons (text and icons only). |
 | Rotate | 0°, 90°, 180°, 270° clockwise (text and icons). The object turns in place, around its center. The rotated shape is what's stitched and exported. |
-| Align | Left, center, right, top, middle, bottom. One object aligns to the canvas. A multi-selection can align to the selection's outer edges or to the canvas. A group moves as one unit. |
+| Align | Left, center, right, top, middle, bottom, measured on the visible stitches, so icons and lowercase text with blank space in their box still land truly centered. "Align to" picks the reference: the canvas (with an optional margin, so Left and Right stop short of the edge), the selection's outer edges, or any other object or group. A group moves as one unit. |
+| Flip | Mirrors the selection left-to-right or top-to-bottom. A single object flips in place; several objects or a group swap sides as a reflection. Text mirrors into backward text, which is the point for symmetrical designs. Flips carry into the PDF. |
+| Snap to guides | While dragging, objects pull onto the canvas center and edges and onto other objects' edges and centers, with a pink guide line showing what matched. Toggle it in the Canvas tab; hold Alt while dragging to move freely. |
 | Space evenly | With three or more objects or groups selected, spreads them so the gaps between them are equal, across or down. The outermost ones stay put. |
 | Layer order | Send backward, bring forward, send to back, bring to front. |
 | Duplicate | Places a copy just to the right. |

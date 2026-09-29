@@ -20,13 +20,26 @@ export function rotateCells(cells: FilledCell[], width: number, height: number, 
   }
 }
 
+export function flipCells(cells: FilledCell[], width: number, height: number, horizontal: boolean, vertical: boolean): FilledCell[] {
+  if (!horizontal && !vertical) return cells
+  return cells.map((c) => ({ ...c, dx: horizontal ? width - 1 - c.dx : c.dx, dy: vertical ? height - 1 - c.dy : c.dy }))
+}
+
 export function renderObjectCells(obj: TextObject | IconObject): FilledCell[] {
+  let size: { width: number; height: number }
+  let cells: FilledCell[]
   if (obj.kind === 'text') {
     const font = getFont(obj.font)
-    const { width, height } = measureText(obj.content, font, obj.direction, obj.scale)
-    return rotateCells(renderTextToCells(obj.content, font, obj.direction, obj.scale), width, height, obj.rotation)
+    size = measureText(obj.content, font, obj.direction, obj.scale)
+    cells = renderTextToCells(obj.content, font, obj.direction, obj.scale)
+  } else {
+    const icon = getIcon(obj.iconId)
+    size = measureIcon(icon, obj.scale)
+    cells = renderIconToCells(icon, obj.scale)
   }
-  const icon = getIcon(obj.iconId)
-  const { width, height } = measureIcon(icon, obj.scale)
-  return rotateCells(renderIconToCells(icon, obj.scale), width, height, obj.rotation)
+  const rotated = rotateCells(cells, size.width, size.height, obj.rotation)
+  const quarter = obj.rotation % 180 !== 0
+  const width = quarter ? size.height : size.width
+  const height = quarter ? size.width : size.height
+  return flipCells(rotated, width, height, !!obj.mirrorH, !!obj.mirrorV)
 }
