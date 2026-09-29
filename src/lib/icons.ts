@@ -4,6 +4,7 @@ import { CELEBRATION_ICONS } from './iconsCelebration'
 import { FANTASY_ICONS } from './iconsFantasy'
 import { GREEK_ICONS } from './iconsGreek'
 import { HOBBIES_ICONS } from './iconsHobbies'
+import { PRIDE_ICONS } from './iconsPride'
 import { SOLIDARITY_ICONS } from './iconsSolidarity'
 import { SPOOKY_ICONS } from './iconsSpooky'
 
@@ -414,6 +415,7 @@ export const ICON_GROUPS = [
   { id: 'spooky', name: 'Spooky & quirky' },
   { id: 'sky', name: 'Sky & weather' },
   { id: 'solidarity', name: 'Solidarity' },
+  { id: 'pride', name: 'Pride' },
   { id: 'care', name: 'Care & access' },
   { id: 'greek', name: 'Greek letters' },
   { id: 'more', name: 'More' },
@@ -454,6 +456,7 @@ export const ICON_LIBRARY: IconDef[] = [
   ...FANTASY_ICONS,
   ...SPOOKY_ICONS,
   ...SOLIDARITY_ICONS,
+  ...PRIDE_ICONS,
   ...CARE_ICONS,
   ...GREEK_ICONS,
 ]
@@ -584,6 +587,62 @@ export const MINI_ICON_LIBRARY: IconDef[] = [
     width: 5,
     height: 5,
     rows: I(['00100', '01110', '11111', '01110', '00100']),
+  },
+  {
+    id: 'mini-flower',
+    name: 'Tiny Flower',
+    width: 5,
+    height: 5,
+    rows: I(['00100', '01010', '10101', '01010', '00100']),
+  },
+  {
+    id: 'mini-leaf',
+    name: 'Tiny Leaf',
+    width: 5,
+    height: 5,
+    rows: I(['00011', '00110', '01110', '11100', '10000']),
+  },
+  {
+    id: 'mini-moon',
+    name: 'Tiny Moon',
+    width: 4,
+    height: 5,
+    rows: I(['0111', '1100', '1100', '1100', '0111']),
+  },
+  {
+    id: 'mini-dash',
+    name: 'Tiny Dash',
+    width: 5,
+    height: 1,
+    rows: I(['11111']),
+  },
+  {
+    id: 'mini-chevron',
+    name: 'Tiny Chevron',
+    width: 5,
+    height: 3,
+    rows: I(['10001', '01010', '00100']),
+  },
+  {
+    id: 'mini-flame',
+    name: 'Tiny Flame',
+    width: 5,
+    height: 5,
+    rows: I(['00100', '01100', '01110', '11111', '01110']),
+  },
+  {
+    id: 'mini-key',
+    name: 'Tiny Key',
+    width: 5,
+    height: 3,
+    rows: I(['11100', '10111', '11101']),
+  },
+  {
+    id: 'mini-infinity',
+    name: 'Tiny Infinity',
+    width: 5,
+    height: 3,
+    rows: I(['01010', '10101', '01010']),
   },
 ]
 

@@ -2,7 +2,7 @@
 
 Every built-in icon, grouped as they appear in the Icons tool. Icons are at 1× size; the tool scales them 1×–6×. "Colors" are the defaults an icon starts with: a two-tone icon has a main and an accent color, and both can be changed after placing. Icons without a default take whatever color is picked. Icon ids are what saved designs refer to.
 
-There are 92 built-in icons in 11 groups, plus a **My icons** group for icons saved from the icon editor (see [`features.md`](features.md) §3.3). To add an icon to the built-in library, save it in the icon editor and paste the source snippet it shows into the matching `src/lib/icons*.ts` file.
+There are 97 built-in icons in 12 groups, plus a **My icons** group for icons saved from the icon editor (see [`features.md`](features.md) §3.3). To add an icon to the built-in library, save it in the icon editor and paste the source snippet it shows into the matching `src/lib/icons*.ts` file.
 
 ## Shapes (11)
 
@@ -101,7 +101,14 @@ There are 92 built-in icons in 11 groups, plus a **My icons** group for icons sa
 | Shield | `shield` | 11×12 | 823 Navy Blue Dark + accent 798 Delft Blue Dark |
 | No symbol | `no-symbol` | 13×13 | 666 Bright Red |
 
-## Care & access (10)
+## Pride (2)
+
+| Icon | Id | Size | Colors |
+| --- | --- | --- | --- |
+| Question mark | `questioning` | 7×9 | 3607 Plum Light |
+| Labrys | `labrys` | 13×13 | 3607 Plum Light |
+
+## Care & access (13)
 
 | Icon | Id | Size | Colors |
 | --- | --- | --- | --- |
@@ -115,6 +122,9 @@ There are 92 built-in icons in 11 groups, plus a **My icons** group for icons sa
 | Speech bubble with ellipsis | `speech-ellipsis` | 13×9 | 414 Steel Gray Dark + accent 666 Bright Red |
 | Awareness Ribbon | `ribbon-solid` | 9×13 | 743 Yellow Medium |
 | Long COVID & Dysautonomia Ribbon | `ribbon-split` | 9×13 | 3812 Sea Green Very Dark + accent 414 Steel Gray Dark |
+| Deaf symbol | `deaf` | 11×14 | 318 Steel Gray Light + accent 666 Bright Red |
+| Brain | `brain` | 13×10 | 3607 Plum Light |
+| Stairs and ramp | `stairs-ramp` | 13×7 | 3799 Pewter Gray Very Dark + accent 666 Bright Red |
 
 ## Greek letters (24)
 

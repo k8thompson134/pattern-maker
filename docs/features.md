@@ -101,8 +101,8 @@ promoting it into the library.
 
 ### 3.4 Stamp (tiny decorations)
 
-A brush-like mode for scattering small accents. Pick one of four mini motifs
-(Tiny Heart, Tiny Star, Tiny Dot, Tiny Diamond, 3–5 stitches each), turn on
+A brush-like mode for scattering small accents. Pick one of twelve mini motifs
+(Tiny Heart, Star, Dot, Diamond, Flower, Leaf, Moon, Dash, Chevron, Flame, Key, Infinity; 1–5 stitches each), turn on
 Stamp mode, and each tap on the canvas drops one. The Stamp tool has its
 own color picker (shared with the Icons tool). Leaving the Stamp tab, or adding
 text or an icon, turns Stamp mode off. Each stamp becomes a normal icon object
@@ -185,7 +185,7 @@ multi-selection or group.
 | Rotation | 90° steps, text and icons only |
 | Fonts | 6 |
 | Characters | Letters (with lowercase and common accents in the mixed-case fonts), 0–9, space, and 14 punctuation marks |
-| Icons | 87 built in across 11 groups, plus your own saved icons, and 4 mini stamps (see [`icons.md`](icons.md)) |
+| Icons | 97 built in across 12 groups, plus your own saved icons, and 12 mini stamps (see [`icons.md`](icons.md)) |
 | Colors | 489 DMC, searchable |
 | Repeat | 2–50 copies, 0–50 gap |
 | Designs | Any number, in one browser |
@@ -281,7 +281,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | Icons have at most two colors | Traditional motifs often use 3–4 colors (a strawberry with green leaves and white seeds). | Medium | |
 | Can't upload an image as a motif | Personal and inside-joke motifs are a stated core use case. The icon editor covers drawing one by hand in two colors, but there's no image import. | Medium | ✱ (v1.1) |
 | Personal icons stay in one browser | The My icons group works across designs but isn't part of a project and doesn't sync between devices. | Low | ✱ (v1.1) |
-| Fewer themed icons for some audiences (baby, wedding, pets, more holidays) | Solidarity, care, celebration, hobbies, fantasy, spooky, botanical, and Greek letters exist. The broader audiences in scope.md hinge on relevant motifs. | Low | ✱ (later) |
+| Fewer themed icons for some audiences (baby, wedding, pets, more holidays) | Solidarity, pride, care, celebration, hobbies, fantasy, spooky, botanical, and Greek letters exist. The broader audiences in scope.md hinge on relevant motifs. | Low | ✱ (later) |
 | Few ready-made examples | Load example offers three designs. More life-event pieces the tool targets (wedding sampler, graduation) would be a faster start. | Low | ✱ (later) |
 
 ### 6.6 Drawing and editing
