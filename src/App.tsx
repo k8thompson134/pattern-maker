@@ -36,7 +36,7 @@ import './App.css'
 
 type ToolTab = 'text' | 'icons' | 'stamp' | 'draw' | 'canvas'
 
-const DEV_MODE_KEY = 'cross-stitch-tool:dev-mode'
+const ICON_EDITOR_KEY = 'cross-stitch-tool:icon-editor'
 const initialCustomIcons = loadCustomIcons()
 setCustomIcons(initialCustomIcons)
 
@@ -168,9 +168,9 @@ function App() {
   const [activeTab, setActiveTab] = useState<ToolTab>('text')
   const isMobile = useIsMobile()
   const [drawMode, setDrawMode] = useState(false)
-  const [devMode, setDevMode] = useState(() => {
+  const [iconEditorOn, setIconEditorOn] = useState(() => {
     try {
-      return localStorage.getItem(DEV_MODE_KEY) === '1'
+      return localStorage.getItem(ICON_EDITOR_KEY) === '1'
     } catch {
       return false
     }
@@ -341,11 +341,11 @@ function App() {
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
   }
 
-  function toggleDevMode() {
-    const next = !devMode
-    setDevMode(next)
+  function toggleIconEditor() {
+    const next = !iconEditorOn
+    setIconEditorOn(next)
     try {
-      localStorage.setItem(DEV_MODE_KEY, next ? '1' : '0')
+      localStorage.setItem(ICON_EDITOR_KEY, next ? '1' : '0')
     } catch {
       // storage unavailable; the toggle just won't persist
     }
@@ -952,10 +952,10 @@ function App() {
       </button>
       <button
         type="button"
-        className={`toggle-btn${devMode ? ' toggle-btn--active' : ''}`}
-        onClick={toggleDevMode}
+        className={`toggle-btn${iconEditorOn ? ' toggle-btn--active' : ''}`}
+        onClick={toggleIconEditor}
       >
-        Developer mode: {devMode ? 'on' : 'off'}
+        Icon editor: {iconEditorOn ? 'on' : 'off'}
       </button>
     </>
   )
@@ -1046,8 +1046,8 @@ function App() {
       <button type="button" className="primary-btn" onClick={addIconObject}>
         Add icon
       </button>
-      {devMode && (
-        <div className="dev-panel">
+      {iconEditorOn && (
+        <div className="icon-editor-panel">
           <button type="button" onClick={editIconAsDrawing}>
             Edit this icon as a drawing
           </button>
@@ -1091,9 +1091,9 @@ function App() {
       </button>
     </>
   )
-  const iconSaveTargetId = devMode ? (activePixelObjectId ?? (selectedObject?.kind === 'pixels' ? selectedObject.id : null)) : null
+  const iconSaveTargetId = iconEditorOn ? (activePixelObjectId ?? (selectedObject?.kind === 'pixels' ? selectedObject.id : null)) : null
   const iconSaveForm = iconSaveTargetId && (
-    <div className="dev-panel">
+    <div className="icon-editor-panel">
       <label className="field-label">Save drawing as icon</label>
       <input
         type="text"
@@ -1104,7 +1104,7 @@ function App() {
       <button type="button" className="primary-btn" onClick={saveIconFromDrawing}>
         Save to My icons
       </button>
-      {iconSaveError && <p className="field-hint dev-panel__error">{iconSaveError}</p>}
+      {iconSaveError && <p className="field-hint icon-editor-panel__error">{iconSaveError}</p>}
       {savedIcon && (
         <>
           <p className="field-hint">Saved. To make it a built-in icon, paste this into an icon file:</p>
@@ -1116,7 +1116,7 @@ function App() {
             ))}
           </select>
           <textarea
-            className="dev-panel__source"
+            className="icon-editor-panel__source"
             readOnly
             rows={Math.min(savedIcon.rows.length + 10, 24)}
             value={iconToSource(savedIcon, snippetGroup)}

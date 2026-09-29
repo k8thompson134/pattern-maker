@@ -83,7 +83,7 @@ Icons can be resized (1×–6×), rotated (0/90/180/270°), recolored, and repea
 Three retired icons (Cross, Paw Print, Raised Fist) aren't in the picker but
 still display correctly in older saved designs.
 
-**Developer mode** (toggle at the bottom of the Canvas tab, remembered between
+**Icon editor** (toggle at the bottom of the Canvas tab, remembered between
 visits) is an icon editor built on the Draw tool. "Edit this icon as a drawing"
 loads any icon, built-in or your own, onto the canvas as an editable drawing.
 "Save to My icons" turns the drawing into an icon: the most-used color becomes

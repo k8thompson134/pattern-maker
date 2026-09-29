@@ -786,7 +786,7 @@ details.tool-section > summary:hover {
   font-weight: 400;
 }
 
-.dev-panel {
+.icon-editor-panel {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -795,11 +795,11 @@ details.tool-section > summary:hover {
   border-top: 1px dashed #c9c2b3;
 }
 
-.dev-panel__error {
+.icon-editor-panel__error {
   color: #b3261e;
 }
 
-.dev-panel__source {
+.icon-editor-panel__source {
   width: 100%;
   box-sizing: border-box;
   font-family: ui-monospace, Menlo, monospace;
