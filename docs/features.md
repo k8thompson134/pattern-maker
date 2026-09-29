@@ -58,6 +58,7 @@ These rules explain most of the behavior (and most of the limits) below.
 | Finished size | Shown above the canvas, e.g. `60×60 stitches · 5.5"×5.5" at 11 stitches/inch`. This is the stitched area only, with no margin for framing or finishing. |
 | Zoom | 20% to 250% in 25% steps. On first load, a small screen zooms out to fit. |
 | New project | Starts a blank 60×60 canvas as a new design. If the current design has anything on it, an inline prompt confirms first ("Start new design" / "Cancel"); the current design stays saved and is reachable from the Design menu. |
+| Load example | Opens a ready-made "Cozy corner" design (hearts border, text, two-tone icons, and stamps) as a new design, leaving the current one untouched. |
 | Project name | Not editable in the UI. The name is set only as the PDF title at export time. |
 
 ### 3.2 Text

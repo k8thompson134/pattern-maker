@@ -4,6 +4,7 @@ import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { BorderThumb } from './components/BorderThumb'
 import { IconThumb } from './components/IconThumb'
 import { createEmptyProject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
+import { buildCozyExample } from './lib/examples'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import type { BitmapFont } from './lib/fonts'
@@ -751,6 +752,13 @@ function App() {
     swapProject({ ...createEmptyProject('Untitled'), zoom: project.zoom })
   }
 
+  function loadExample() {
+    const example = buildCozyExample(project.zoom)
+    saveProject(example)
+    setProjectList(listProjects())
+    swapProject(example)
+  }
+
   // "Save as": copies the current design into a new slot under a new name and
   // switches to editing that copy, leaving the original untouched — the
   // variants-for-a-second-recipient workflow from docs/features.md.
@@ -1216,6 +1224,9 @@ function App() {
           </button>
           <button type="button" onClick={saveProjectAs}>
             Save as…
+          </button>
+          <button type="button" onClick={loadExample} title="Open a ready-made example design in a new slot">
+            Load example
           </button>
           <button
             type="button"
