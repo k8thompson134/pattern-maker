@@ -1,14 +1,21 @@
+import { BOTANICAL_ICONS } from './iconsBotanical'
+
 export type IconDef = {
   id: string
   name: string
+  group?: string
   width: number
   height: number
+  // '1' = main stitch, '2' = accent stitch (second color)
   rows: string[]
+  // Default DMC codes applied when the icon is placed; accent falls back to black.
+  main?: string
+  accent?: string
 }
 
 const I = (rows: string[]) => rows
 
-export const ICON_LIBRARY: IconDef[] = [
+const CORE_ICONS: IconDef[] = [
   {
     id: 'heart',
     name: 'Heart',
@@ -212,40 +219,6 @@ export const ICON_LIBRARY: IconDef[] = [
     ]),
   },
   {
-    id: 'bee',
-    name: 'Bee',
-    width: 13,
-    height: 8,
-    rows: I([
-      '0000110011000',
-      '0001001100100',
-      '0000110011000',
-      '0011001100110',
-      '0111001100111',
-      '1111001100110',
-      '0111001100111',
-      '0011001100110',
-    ]),
-  },
-  {
-    id: 'butterfly',
-    name: 'Butterfly',
-    width: 11,
-    height: 10,
-    rows: I([
-      '00010001000',
-      '00001010000',
-      '11000100011',
-      '11101110111',
-      '11110101111',
-      '11110101111',
-      '01110101110',
-      '01110101110',
-      '11110101111',
-      '01100000110',
-    ]),
-  },
-  {
     id: 'ghost',
     name: 'Ghost',
     width: 9,
@@ -425,9 +398,80 @@ export const ICON_LIBRARY: IconDef[] = [
   },
 ]
 
+export const ICON_GROUPS = [
+  { id: 'shapes', name: 'Shapes' },
+  { id: 'botanical', name: 'Botanical' },
+  { id: 'sky', name: 'Sky & weather' },
+  { id: 'more', name: 'More' },
+] as const
+
+const CORE_GROUP: Record<string, string> = {
+  heart: 'shapes',
+  star: 'shapes',
+  diamond: 'shapes',
+  circle: 'shapes',
+  square: 'shapes',
+  triangle: 'shapes',
+  'arrow-up': 'shapes',
+  spiral: 'shapes',
+  'wavy-line': 'shapes',
+  zigzag: 'shapes',
+  cross: 'shapes',
+  lightning: 'shapes',
+  moon: 'sky',
+  sun: 'sky',
+  cloud: 'sky',
+  rainbow: 'sky',
+  flower: 'botanical',
+  rose: 'botanical',
+  leaf: 'botanical',
+  mushroom: 'botanical',
+  strawberry: 'botanical',
+  cherries: 'botanical',
+}
+
+export const ICON_LIBRARY: IconDef[] = [
+  ...CORE_ICONS.map((i) => ({ ...i, group: CORE_GROUP[i.id] ?? 'more' })),
+  ...BOTANICAL_ICONS,
+]
+
 // Retired from the picker but still resolvable, so saved projects that used them
 // keep rendering the original shape instead of silently falling back to a heart.
 const LEGACY_ICONS: IconDef[] = [
+  {
+    id: 'bee',
+    name: 'Bee',
+    width: 13,
+    height: 8,
+    rows: I([
+      '0000110011000',
+      '0001001100100',
+      '0000110011000',
+      '0011001100110',
+      '0111001100111',
+      '1111001100110',
+      '0111001100111',
+      '0011001100110',
+    ]),
+  },
+  {
+    id: 'butterfly',
+    name: 'Butterfly',
+    width: 11,
+    height: 10,
+    rows: I([
+      '00010001000',
+      '00001010000',
+      '11000100011',
+      '11101110111',
+      '11110101111',
+      '11110101111',
+      '01110101110',
+      '01110101110',
+      '11110101111',
+      '01100000110',
+    ]),
+  },
   {
     id: 'cross',
     name: 'Cross',

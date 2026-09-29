@@ -8,7 +8,7 @@ import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import type { BitmapFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { accentDroppedChars, measureText, unsupportedChars } from './lib/textRender'
-import { ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon } from './lib/icons'
+import { ICON_GROUPS, ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon } from './lib/icons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
@@ -17,6 +17,7 @@ import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
 import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
 import { replaceColor } from './lib/recolor'
+import { accentColorOf, iconHasAccent, newIconColors, objectColors } from './lib/iconColors'
 import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
@@ -137,6 +138,7 @@ function App() {
   const [draftFontId, setDraftFontId] = useState(AVAILABLE_FONTS[0].id)
   const [draftTextColor, setDraftTextColor] = useState(DMC_STARTER_COLORS[0])
   const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
+  const [openIconGroup, setOpenIconGroup] = useState<string>(ICON_GROUPS[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -293,7 +295,7 @@ function App() {
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
       rotation: 0,
-      color: draftIconColor,
+      ...newIconColors(icon, draftIconColor),
     }
     setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
@@ -725,7 +727,7 @@ function App() {
 
   const paletteColors = [
     ...new Map(
-      project.objects.flatMap((o) => (o.kind === 'pixels' ? o.cells.map((c) => c.color) : [o.color])).map((c) => [c.dmcCode, c]),
+      project.objects.flatMap(objectColors).map((c) => [c.dmcCode, c]),
     ).values(),
   ]
 
@@ -809,19 +811,39 @@ function App() {
   )
   const iconsBody = (
     <>
-      <div className="icon-grid">
-        {ICON_LIBRARY.map((icon) => (
-          <button
-            key={icon.id}
-            type="button"
-            className={`icon-thumb-btn${draftIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
-            title={icon.name}
-            onClick={() => setDraftIconId(icon.id)}
-          >
-            <IconThumb icon={icon} color="#ddd" />
-          </button>
-        ))}
-      </div>
+      {ICON_GROUPS.map((group) => {
+        const icons = ICON_LIBRARY.filter((i) => i.group === group.id)
+        if (icons.length === 0) return null
+        const isOpen = openIconGroup === group.id
+        return (
+          <div key={group.id} className="icon-group">
+            <button
+              type="button"
+              className="icon-group__header"
+              aria-expanded={isOpen}
+              onClick={() => setOpenIconGroup(isOpen ? '' : group.id)}
+            >
+              <span>{group.name}</span>
+              <span className="icon-group__count">{icons.length}</span>
+            </button>
+            {isOpen && (
+              <div className="icon-grid">
+                {icons.map((icon) => (
+                  <button
+                    key={icon.id}
+                    type="button"
+                    className={`icon-thumb-btn${draftIconId === icon.id ? ' icon-thumb-btn--active' : ''}`}
+                    title={icon.name}
+                    onClick={() => setDraftIconId(icon.id)}
+                  >
+                    <IconThumb icon={icon} color="#ddd" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
       <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
       <button type="button" className="primary-btn" onClick={addIconObject}>
         Add icon
@@ -1074,6 +1096,15 @@ function App() {
                     selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
                   }
                 />
+                {selectedObject.kind === 'icon' && iconHasAccent(getIcon(selectedObject.iconId)) && (
+                  <>
+                    <label className="field-label">Accent color</label>
+                    <ColorSwatchPicker
+                      selected={accentColorOf(selectedObject)}
+                      onSelect={(c) => updateIconObject({ color2: c })}
+                    />
+                  </>
+                )}
               </>
             )}
 

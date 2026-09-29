@@ -1,7 +1,7 @@
 import type { BitmapFont } from './fonts'
 import type { TextDirection } from './types'
 
-export type FilledCell = { dx: number; dy: number }
+export type FilledCell = { dx: number; dy: number; accent?: boolean }
 
 const LETTER_SPACING = 1
 

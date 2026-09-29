@@ -10,11 +10,11 @@ import { measureIcon, renderIconToCells } from './iconRender'
 export function rotateCells(cells: FilledCell[], width: number, height: number, rotation: number): FilledCell[] {
   switch (((rotation % 360) + 360) % 360) {
     case 90:
-      return cells.map(({ dx, dy }) => ({ dx: height - 1 - dy, dy: dx }))
+      return cells.map((c) => ({ ...c, dx: height - 1 - c.dy, dy: c.dx }))
     case 180:
-      return cells.map(({ dx, dy }) => ({ dx: width - 1 - dx, dy: height - 1 - dy }))
+      return cells.map((c) => ({ ...c, dx: width - 1 - c.dx, dy: height - 1 - c.dy }))
     case 270:
-      return cells.map(({ dx, dy }) => ({ dx: dy, dy: width - 1 - dx }))
+      return cells.map((c) => ({ ...c, dx: c.dy, dy: width - 1 - c.dx }))
     default:
       return cells
   }

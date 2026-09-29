@@ -32,6 +32,7 @@ export type IconObject = {
   y: number
   rotation: number
   color: StitchColor
+  color2?: StitchColor
 }
 
 export type PixelCell = { dx: number; dy: number; color: StitchColor }

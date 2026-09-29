@@ -735,3 +735,23 @@ details.tool-section > summary:hover {
 .palette-list__picker {
   flex-basis: 100%;
 }
+
+.icon-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.icon-group__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.icon-group__count {
+  color: var(--text-dim);
+  font-weight: 400;
+}

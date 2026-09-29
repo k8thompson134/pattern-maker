@@ -1,5 +1,6 @@
 import type { Project, StitchColor } from './types'
 import { renderObjectCells } from './objectCells'
+import { cellColor } from './iconColors'
 
 export type FlattenedCell = { x: number; y: number; color: StitchColor }
 
@@ -25,7 +26,7 @@ export function flattenProject(project: Project): FlattenedCell[] {
     for (const c of renderObjectCells(obj)) {
       const x = obj.x + c.dx
       const y = obj.y + c.dy
-      grid.set(`${x},${y}`, { x, y, color: obj.color })
+      grid.set(`${x},${y}`, { x, y, color: cellColor(obj, c) })
     }
   }
 

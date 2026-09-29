@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import type { CanvasObject, IconObject, TextObject } from '../lib/types'
 import { renderObjectCells } from '../lib/objectCells'
+import { cellColor } from '../lib/iconColors'
 import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
 import { nextSelection, selectionBounds } from '../lib/selection'
@@ -284,7 +285,7 @@ export function CanvasGrid({
                     stitchRect(i, effectiveObj.x + c.dx, effectiveObj.y + c.dy, c.color, isSelected),
                   )
                 : renderObjectCells(effectiveObj).map((c, i) =>
-                    stitchRect(i, effectiveObj.x + c.dx, effectiveObj.y + c.dy, effectiveObj.color, isSelected),
+                    stitchRect(i, effectiveObj.x + c.dx, effectiveObj.y + c.dy, cellColor(effectiveObj, c), isSelected),
                   )}
             </g>
           )
