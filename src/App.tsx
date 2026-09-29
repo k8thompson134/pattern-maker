@@ -277,6 +277,7 @@ function App() {
       rotation: 0,
       color: draftTextColor,
     }
+    setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
     setDraftText('')
   }
@@ -294,6 +295,7 @@ function App() {
       rotation: 0,
       color: draftIconColor,
     }
+    setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
   }
 
@@ -838,6 +840,7 @@ function App() {
           </button>
         ))}
       </div>
+      <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
       <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
         {stampMode ? 'Done stamping' : 'Stamp mode'}
       </button>
@@ -972,13 +975,13 @@ function App() {
         )}
         {confirmingNewProject && (
           <div className="confirm-bar">
-            <p>Start over? Your current design will be deleted — this can't be undone.</p>
+            <p>Start a new design? "{project.name}" stays saved — switch back to it any time from the Design menu.</p>
             <div className="button-row">
               <button type="button" className="danger-btn" onClick={startNewProject}>
-                Delete and start new
+                Start new design
               </button>
               <button type="button" onClick={() => setConfirmingNewProject(false)}>
-                Keep editing
+                Cancel
               </button>
             </div>
           </div>
@@ -1352,6 +1355,11 @@ function App() {
                 onClick={() => {
                   setActiveTab(t.key)
                   setSelectedIds([])
+                  if (t.key !== 'stamp') setStampMode(false)
+                  if (t.key !== 'draw') {
+                    setDrawMode(false)
+                    setActivePixelObjectId(null)
+                  }
                 }}
               >
                 {t.tab}

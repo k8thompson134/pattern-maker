@@ -56,7 +56,7 @@ These rules explain most of the behavior (and most of the limits) below.
 | Fabric count | Stitches per inch, 1 to 30 (e.g. 14 for 14-count Aida). Used only to show the finished size in inches. |
 | Finished size | Shown above the canvas, e.g. `60×60 stitches · 5.5"×5.5" at 11 stitches/inch`. This is the stitched area only, with no margin for framing or finishing. |
 | Zoom | 20% to 250% in 25% steps. On first load, a small screen zooms out to fit. |
-| New project | Starts a blank 60×60 canvas. If the current design has anything on it, an inline warning asks you to confirm first ("Delete and start new" / "Keep editing"). Only one project exists at a time. |
+| New project | Starts a blank 60×60 canvas as a new design. If the current design has anything on it, an inline prompt confirms first ("Start new design" / "Cancel"); the current design stays saved and is reachable from the Design menu. |
 | Project name | Not editable in the UI. The name is set only as the PDF title at export time. |
 
 ### 3.2 Text
@@ -88,9 +88,10 @@ still display correctly in older saved designs.
 
 A brush-like mode for scattering small accents. Pick one of four mini motifs
 (Tiny Heart, Tiny Star, Tiny Dot, Tiny Diamond, 3–5 stitches each), turn on
-Stamp mode, and each tap on the canvas drops one. They use the color currently
-chosen in the Icons tool. Each stamp becomes a normal icon object you can move
-or delete afterward.
+Stamp mode, and each tap on the canvas drops one. The Stamp tool has its
+own color picker (shared with the Icons tool). Leaving the Stamp tab, or adding
+text or an icon, turns Stamp mode off. Each stamp becomes a normal icon object
+you can move or delete afterward.
 
 ### 3.5 Draw (freehand stitches)
 
