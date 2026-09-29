@@ -1,5 +1,6 @@
 import { BOTANICAL_ICONS } from './iconsBotanical'
 import { CARE_ICONS } from './iconsCare'
+import { GREEK_ICONS } from './iconsGreek'
 import { SOLIDARITY_ICONS } from './iconsSolidarity'
 
 export type IconDef = {
@@ -406,6 +407,7 @@ export const ICON_GROUPS = [
   { id: 'sky', name: 'Sky & weather' },
   { id: 'solidarity', name: 'Solidarity' },
   { id: 'care', name: 'Care & access' },
+  { id: 'greek', name: 'Greek letters' },
   { id: 'more', name: 'More' },
 ] as const
 
@@ -439,6 +441,7 @@ export const ICON_LIBRARY: IconDef[] = [
   ...BOTANICAL_ICONS,
   ...SOLIDARITY_ICONS,
   ...CARE_ICONS,
+  ...GREEK_ICONS,
 ]
 
 // Retired from the picker but still resolvable, so saved projects that used them
