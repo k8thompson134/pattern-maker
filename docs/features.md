@@ -65,8 +65,8 @@ These rules explain most of the behavior (and most of the limits) below.
 
 | Feature | Details |
 | --- | --- |
-| Fonts | **Block 5×7** (capitals, 7 stitches tall), **Tiny 3×5** (capitals, 5 tall), **Mixed case 5×9** (lowercase with descenders and accents, 9 tall) and **Italic 5×9** (the mixed-case font slanted). Mixed and Italic letters have varying widths, so `i` and `l` sit closer than `m` and `w`. |
-| Characters | A–Z, 0–9, space, and `. , ! ? ' " - & : ; / # ( ) + = * % _ ♥` in every font. Block and Tiny stitch lowercase as capitals; Mixed and Italic have true lowercase plus `à á â ä è é ê ë ì í î ï ò ó ô õ ö ù ú û ü ñ ç`. Any accented letter a font doesn't draw is stitched as its plain base letter, with a warning that says so. Any other character (`@`, `¿`, …) becomes a blank space, with a warning naming it, both in the Text tool and when editing a placed text object. |
+| Fonts | **Block 5×7** (capitals, 7 stitches tall), **Tiny 3×5** (capitals, 5 tall), **Mixed case 5×9** (lowercase with descenders and accents, 9 tall), **Italic 5×9** (the mixed-case font slanted), **Classic Serif 5×9** (traditional Roman serif alphabet with bracketed serifs), and **Cursive Script 6×9** (flowing calligraphic cursive with connecting baseline exit strokes and looped ascenders/descenders). Mixed, Italic, Serif, and Script letters have varying widths, so `i` and `l` sit closer than `m` and `w`. |
+| Characters | A–Z, 0–9, space, and `. , ! ? ' " - & : ; / # ( ) + = * % _ ♥` in every font (with smart quotes and dashes mapped automatically). Block and Tiny stitch lowercase as capitals; Mixed, Italic, Serif, and Script have true lowercase plus `à á â ä è é ê ë ì í î ï ò ó ô õ ö ù ú û ü ñ ç`. Any accented letter a font doesn't draw is stitched as its plain base letter, with a warning that says so. Any other character (`@`, `¿`, …) becomes a blank space, with a warning naming it, both in the Text tool and when editing a placed text object. |
 | Direction | Across (left to right) or Down (letters stacked vertically). |
 | Editing | The words, font, direction, and color can be changed after placing. |
 | Size | 1× to 6×. See section 2. |
@@ -74,11 +74,13 @@ These rules explain most of the behavior (and most of the limits) below.
 
 ### 3.3 Icons
 
+[`icons.md`](icons.md) lists every icon with its size and default colors.
+
 The library is organized into collapsible groups (shapes, botanical, celebration,
 cozy and hobbies, gaming and fantasy, spooky and quirky, sky and
 weather, solidarity, care and access, Greek letters, and more), each icon roughly
 7–14 stitches across at 1×. An icon has one color, or two when its design has
-accent details (a bee's stripes, a heart's highlight); the picker shows the
+accent details (a bee's stripes, a cottage's roof); the picker shows the
 accent color pair whenever the chosen icon has one.
 
 Icons can be resized (1×–6×), rotated (0/90/180/270°), recolored, and repeated.
@@ -161,7 +163,7 @@ not to a multi-selection or group.
 - After 25 edits without a PDF export, a dismissible banner above the canvas suggests backing up. Exporting or dismissing resets the count.
 - If saving fails (e.g. browser storage is full), a red banner warns you.
 - If the saved project can't be read back, a banner says so and a new project starts.
-- There is only one project, stored in one browser. There's no file to save, open, or share, and nothing syncs between devices.
+- Designs are stored in one browser. There's no file to save, open, or share, and nothing syncs between devices.
 
 ### 3.10 Phone vs. desktop
 
@@ -177,21 +179,24 @@ not to a multi-selection or group.
 | Canvas | 1–500 stitches per side |
 | Object size | 1×–6× |
 | Rotation | 90° steps, text and icons only |
-| Fonts | 4 |
+| Fonts | 6 |
 | Characters | Letters (with lowercase and common accents in the mixed-case fonts), 0–9, space, and 14 punctuation marks |
-| Icons | 25 (+ 4 mini stamps) |
-| Colors | 14 DMC, fixed |
+| Icons | 87 built in across 11 groups, plus your own saved icons, and 4 mini stamps (see [`icons.md`](icons.md)) |
+| Colors | 489 DMC, searchable |
 | Repeat | 2–50 copies, 0–50 gap |
-| Projects | 1, in one browser |
+| Designs | Any number, in one browser |
 | Export | PDF, one A4 page |
 
 ---
 
 ## 4. Undo
 
-**There is no undo or redo.** Every change is final and autosaved immediately.
-Deleting an object, resizing the canvas smaller (which moves objects), or
-pressing New project can't be reversed.
+Undo and redo cover every edit to a design: placing, moving, resizing, recoloring,
+deleting, canvas resizing, drawing, and borders. Use the toolbar buttons or
+Ctrl/Cmd+Z (Ctrl/Cmd+Shift+Z or Ctrl+Y to redo). Rapid edits to the same field
+merge into one step, and zoom is never part of the history. Starting, switching to,
+or saving a copy of a design begins a fresh history for it. Deleting a whole design
+can't be reversed.
 
 ---
 
@@ -260,7 +265,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| No hand-drawn serif or script font | The fonts are blocky. Italic is a slanted version of the mixed-case font, not a true script or serif alphabet. | Medium | ✱ (more fonts) |
+| ~~No hand-drawn serif or script font~~ | ~~Fixed, see section 3.2 (Classic Serif 5×9 and Cursive Script 6×9).~~ | Fixed | |
 | Accents on capitals | Accented capitals stitch as plain capitals (with a warning), since a capital fills the full letter height with no room above it. | Low | |
 | No `@` or inverted punctuation (`¿ ¡`) | Rare in stitched text; they become blanks with a warning. | Low | |
 | No multi-line text or alignment | Each line is placed and centered by hand. | Medium | |
@@ -270,10 +275,10 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
 | Icons have at most two colors | Traditional motifs often use 3–4 colors (a strawberry with green leaves and white seeds). | Medium | |
-| Can't upload your own motif | Personal and inside-joke motifs are a stated core use case. | Medium | ✱ (v1.1) |
-| No saved personal motif library | Reusing motifs across projects. | Medium | ✱ (v1.1) |
-| Themed icon sets (holidays, baby, wedding, pride, pets…) | The broader audiences in scope.md all hinge on relevant motifs. | Medium | ✱ (later) |
-| No templates (birth announcement, wedding sampler) | Fast start for the life-event pieces the tool targets. | Low | ✱ (later) |
+| Can't upload an image as a motif | Personal and inside-joke motifs are a stated core use case. The icon editor covers drawing one by hand in two colors, but there's no image import. | Medium | ✱ (v1.1) |
+| Personal icons stay in one browser | The My icons group works across designs but isn't part of a project and doesn't sync between devices. | Low | ✱ (v1.1) |
+| Fewer themed icons for some audiences (baby, wedding, pets, more holidays) | Solidarity, care, celebration, hobbies, fantasy, spooky, botanical, and Greek letters exist. The broader audiences in scope.md hinge on relevant motifs. | Low | ✱ (later) |
+| Only one ready-made example | Load example opens a single Cozy corner design. Templates for the life-event pieces the tool targets (birth announcement, wedding sampler) would be a faster start. | Low | ✱ (later) |
 
 ### 6.6 Drawing and editing
 
@@ -300,7 +305,7 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 
 | Gap | Why it matters | Impact | Roadmap |
 | --- | --- | --- | --- |
-| Only one project at a time | Can't keep several designs (a series of fundraiser pieces) side by side. | **High** | |
+| ~~Only one project at a time~~ | ~~Fixed, see section 3.9 (Save as, Design menu).~~ | Fixed | |
 | No save/open file | Can't back up a design, move it to another device, or send it to the person who'll stitch it. | Medium | ✱ (export-to-file, shareable layouts) |
 | No PNG/image export | Quick preview to share on social media or with a gift recipient. | Low | ✱ (open question) |
 | No stitched-look preview | Seeing the design as stitched Xs on fabric color helps judge contrast. | Low | |
