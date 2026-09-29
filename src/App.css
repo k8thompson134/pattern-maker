@@ -806,3 +806,9 @@ details.tool-section > summary:hover {
   font-size: 0.75rem;
   white-space: pre;
 }
+
+.snap-guides line {
+  stroke: #e0479e;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}

@@ -40,6 +40,7 @@ import './App.css'
 type ToolTab = 'text' | 'icons' | 'stamp' | 'draw' | 'canvas'
 
 const ICON_EDITOR_KEY = 'cross-stitch-tool:icon-editor'
+const SNAP_KEY = 'cross-stitch-tool:snap'
 const initialCustomIcons = loadCustomIcons()
 setCustomIcons(initialCustomIcons)
 
@@ -167,6 +168,13 @@ function App() {
   const [multiSelect, setMultiSelect] = useState(false)
   const [alignTarget, setAlignTarget] = useState<string>('selection')
   const [alignMargin, setAlignMargin] = useState(0)
+  const [snapEnabled, setSnapEnabled] = useState(() => {
+    try {
+      return localStorage.getItem(SNAP_KEY) !== 'off'
+    } catch {
+      return true
+    }
+  })
   const [confirmingNewProject, setConfirmingNewProject] = useState(false)
   const [confirmingDeleteProject, setConfirmingDeleteProject] = useState(false)
   const [projectList, setProjectList] = useState(() => listProjects())
@@ -598,6 +606,16 @@ function App() {
     return targets
   })()
   const alignTargetChoice = alignTarget === 'selection' && selectionUnitCount > 1 ? 'selection' : alignTargets.some((t) => t.id === alignTarget) ? alignTarget : 'canvas'
+
+  function toggleSnap() {
+    const next = !snapEnabled
+    setSnapEnabled(next)
+    try {
+      localStorage.setItem(SNAP_KEY, next ? 'on' : 'off')
+    } catch {
+      // storage unavailable; the toggle still works for this session
+    }
+  }
 
   function alignSelection(alignment: Alignment) {
     const margin = Math.max(0, Math.min(alignMargin, Math.floor((Math.min(project.widthStitches, project.heightStitches) - 1) / 2)))
@@ -1075,6 +1093,14 @@ function App() {
       {!borderFitsCanvas && <p className="field-hint">The canvas is too small for this border.</p>}
       <button type="button" className="primary-btn" disabled={!borderFitsCanvas} onClick={addBorder}>
         Add border
+      </button>
+      <button
+        type="button"
+        className={`toggle-btn${snapEnabled ? ' toggle-btn--active' : ''}`}
+        title="While dragging, pull objects onto the canvas center and edges and other objects' edges and centers. Hold Alt to drag freely."
+        onClick={toggleSnap}
+      >
+        Snap to guides: {snapEnabled ? 'on' : 'off'}
       </button>
       <button
         type="button"
@@ -1790,6 +1816,7 @@ function App() {
             onStamp={addIconObjectAt}
             symbols={symbols}
             showSymbols={showSymbols}
+            snapEnabled={snapEnabled}
           />
         </div>
         {isMobile && (

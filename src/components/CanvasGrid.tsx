@@ -4,9 +4,11 @@ import { renderObjectCells } from '../lib/objectCells'
 import { cellColor } from '../lib/iconColors'
 import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
-import { nextSelection, selectionBounds } from '../lib/selection'
+import { nextSelection, selectionBounds, type Bounds } from '../lib/selection'
 import { symbolTextIsBlack } from '../lib/chartLayout'
 import { createId } from '../lib/id'
+import { inkBounds, inkUnionBounds } from '../lib/inkBounds'
+import { guideTargets, snapMove } from '../lib/snap'
 import { lineCells, type GridCell } from '../lib/pixelObject'
 
 type CanvasGridProps = {
@@ -27,6 +29,7 @@ type CanvasGridProps = {
   onStamp: (gx: number, gy: number) => void
   symbols: Map<string, string>
   showSymbols: boolean
+  snapEnabled: boolean
 }
 
 export const CELL_SIZE = 16
@@ -53,6 +56,7 @@ export function CanvasGrid({
   onStamp,
   symbols,
   showSymbols,
+  snapEnabled,
 }: CanvasGridProps) {
   const cell = CELL_SIZE * zoom
   const pixelWidth = widthStitches * cell
@@ -97,13 +101,16 @@ export function CanvasGrid({
     maxDx: number
     minDy: number
     maxDy: number
+    ink: Bounds
+    targetsX: number[]
+    targetsY: number[]
   } | null>(null)
 
   // Live drag/resize state lives here, not in the parent's saved project — committing
   // every pixel of movement up to the parent triggers a localStorage write on every
   // pointermove event, which is what was making dragging feel laggy. Only the final
   // position/scale gets committed (and saved) on pointer-up.
-  const [dragPreview, setDragPreview] = useState<{ ids: string[]; dx: number; dy: number } | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ ids: string[]; dx: number; dy: number; guidesX: number[]; guidesY: number[] } | null>(null)
 
   const resizeRef = useRef<{
     id: string
@@ -148,8 +155,13 @@ export function CanvasGrid({
     if (!ids.includes(obj.id)) return
     const bounds = selectionBounds(objects.filter((o) => ids.includes(o.id)))
     if (!bounds) return
+    const moving = objects.filter((o) => ids.includes(o.id))
+    const others = objects.filter((o) => !ids.includes(o.id) && !(o.kind === 'pixels' && o.hollow)).map(inkBounds)
     dragRef.current = {
       ids,
+      ink: inkUnionBounds(moving) ?? bounds,
+      targetsX: guideTargets(widthStitches, others, 'x'),
+      targetsY: guideTargets(heightStitches, others, 'y'),
       startPointerX: e.clientX,
       startPointerY: e.clientY,
       minDx: -bounds.x,
@@ -187,7 +199,8 @@ export function CanvasGrid({
     const deltaY = Math.round((e.clientY - drag.startPointerY) / cell)
     const dx = Math.min(Math.max(drag.minDx, deltaX), drag.maxDx)
     const dy = Math.min(Math.max(drag.minDy, deltaY), drag.maxDy)
-    setDragPreview({ ids: drag.ids, dx, dy })
+    const snapped = snapMove(drag.ink, drag.targetsX, drag.targetsY, dx, dy, drag, snapEnabled && !e.altKey)
+    setDragPreview({ ids: drag.ids, ...snapped })
   }
 
   function handlePointerUp() {
@@ -319,6 +332,16 @@ export function CanvasGrid({
         })}
       </g>
       <g className="canvas-grid__lines">{lines}</g>
+      {dragPreview && (
+        <g className="snap-guides" pointerEvents="none">
+          {dragPreview.guidesX.map((gx) => (
+            <line key={`gx${gx}`} x1={gx * cell} y1={0} x2={gx * cell} y2={pixelHeight} />
+          ))}
+          {dragPreview.guidesY.map((gy) => (
+            <line key={`gy${gy}`} x1={0} y1={gy * cell} x2={pixelWidth} y2={gy * cell} />
+          ))}
+        </g>
+      )}
       {(() => {
         const selected = objects.filter((o) => selectedIds.includes(o.id)).map(withPreview)
         const bounds = selectionBounds(selected)
