@@ -409,6 +409,7 @@ export const ICON_GROUPS = [
   { id: 'care', name: 'Care & access' },
   { id: 'greek', name: 'Greek letters' },
   { id: 'more', name: 'More' },
+  { id: 'custom', name: 'My icons' },
 ] as const
 
 const CORE_GROUP: Record<string, string> = {
@@ -573,8 +574,15 @@ export const MINI_ICON_LIBRARY: IconDef[] = [
   },
 ]
 
+let customIcons: IconDef[] = []
+
+export function setCustomIcons(icons: IconDef[]): void {
+  customIcons = icons
+}
+
 export function getIcon(id: string): IconDef {
   return (
+    customIcons.find((i) => i.id === id) ??
     ICON_LIBRARY.find((i) => i.id === id) ??
     MINI_ICON_LIBRARY.find((i) => i.id === id) ??
     LEGACY_ICONS.find((i) => i.id === id) ??

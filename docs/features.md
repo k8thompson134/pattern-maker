@@ -73,17 +73,26 @@ These rules explain most of the behavior (and most of the limits) below.
 
 ### 3.3 Icons
 
-The library has 25 single-color motifs, each roughly 7–13 stitches across at 1×:
-
-- **Sky and nature:** Heart, Sparkle, Crescent Moon, Sun, Cloud, Rainbow, Flower, Rose, Leaf
-- **Food and critters:** Mushroom, Strawberry, Cherries, Bee, Butterfly, Ghost
-- **Symbols:** Music Note, Lightning Bolt
-- **Shapes:** Diamond, Circle, Square (outline), Triangle, Arrow
-- **Doodles:** Spiral, Wavy Line, Zigzag. The wavy line and zigzag are wide and flat, meant for repeating into border strips.
+The library is organized into collapsible groups (shapes, botanical, sky and
+weather, solidarity, care and access, Greek letters, and more), each icon roughly
+7–14 stitches across at 1×. An icon has one color, or two when its design has
+accent details (a bee's stripes, a heart's highlight); the picker shows the
+accent color pair whenever the chosen icon has one.
 
 Icons can be resized (1×–6×), rotated (0/90/180/270°), recolored, and repeated.
 Three retired icons (Cross, Paw Print, Raised Fist) aren't in the picker but
 still display correctly in older saved designs.
+
+**Developer mode** (toggle at the bottom of the Canvas tab, remembered between
+visits) is an icon editor built on the Draw tool. "Edit this icon as a drawing"
+loads any icon, built-in or your own, onto the canvas as an editable drawing.
+"Save to My icons" turns the drawing into an icon: the most-used color becomes
+the main stitch, a second color becomes the accent, and a third color is
+refused. Saving under an existing name overwrites it, which is how edits work.
+Saved icons live in a "My icons" group in this browser (they are not part of the
+project file and are not synced), can be placed, exported and deleted like any
+icon, and each save also shows a source snippet in the built-in icon format for
+promoting it into the library.
 
 ### 3.4 Stamp (tiny decorations)
 

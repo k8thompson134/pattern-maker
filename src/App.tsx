@@ -9,7 +9,15 @@ import { AVAILABLE_FONTS, getFont } from './lib/fonts'
 import type { BitmapFont } from './lib/fonts'
 import { DMC_STARTER_COLORS } from './lib/dmcColors'
 import { accentDroppedChars, measureText, unsupportedChars } from './lib/textRender'
-import { ICON_GROUPS, ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon, type IconDef } from './lib/icons'
+import { ICON_GROUPS, ICON_LIBRARY, MINI_ICON_LIBRARY, getIcon, setCustomIcons, type IconDef } from './lib/icons'
+import {
+  CUSTOM_GROUP,
+  iconToPixelObject,
+  iconToSource,
+  loadCustomIcons,
+  pixelObjectToIcon,
+  saveCustomIcons,
+} from './lib/customIcons'
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
@@ -27,6 +35,10 @@ import { useIsMobile } from './useIsMobile'
 import './App.css'
 
 type ToolTab = 'text' | 'icons' | 'stamp' | 'draw' | 'canvas'
+
+const DEV_MODE_KEY = 'cross-stitch-tool:dev-mode'
+const initialCustomIcons = loadCustomIcons()
+setCustomIcons(initialCustomIcons)
 
 const MIN_ZOOM = 0.2
 const MAX_ZOOM = 2.5
@@ -156,6 +168,19 @@ function App() {
   const [activeTab, setActiveTab] = useState<ToolTab>('text')
   const isMobile = useIsMobile()
   const [drawMode, setDrawMode] = useState(false)
+  const [devMode, setDevMode] = useState(() => {
+    try {
+      return localStorage.getItem(DEV_MODE_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  const [customIcons, setCustomIconList] = useState(initialCustomIcons)
+  const [iconSaveName, setIconSaveName] = useState('')
+  const [iconSaveError, setIconSaveError] = useState('')
+  const [savedIcon, setSavedIcon] = useState<IconDef | null>(null)
+  const [snippetGroup, setSnippetGroup] = useState('more')
+  const [confirmingDeleteIcon, setConfirmingDeleteIcon] = useState(false)
   const [stampMode, setStampMode] = useState(false)
   const [drawErase, setDrawErase] = useState(false)
   const [drawColor, setDrawColor] = useState(DMC_STARTER_COLORS[0])
@@ -314,6 +339,59 @@ function App() {
     }
     setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
+  }
+
+  function toggleDevMode() {
+    const next = !devMode
+    setDevMode(next)
+    try {
+      localStorage.setItem(DEV_MODE_KEY, next ? '1' : '0')
+    } catch {
+      // storage unavailable; the toggle just won't persist
+    }
+  }
+
+  function updateCustomIcons(next: IconDef[]) {
+    setCustomIcons(next)
+    saveCustomIcons(next)
+    setCustomIconList(next)
+  }
+
+  function editIconAsDrawing() {
+    const icon = getIcon(draftIconId)
+    const drawing = iconToPixelObject(icon, draftIconColor, draftIconAccent, project.widthStitches, project.heightStitches)
+    setProject((p) => ({ ...p, objects: [...p.objects, drawing], updatedAt: new Date().toISOString() }))
+    setIconSaveName(icon.name)
+    setIconSaveError('')
+    setSavedIcon(null)
+    setStampMode(false)
+    setMultiSelect(false)
+    setSelectedIds([])
+    setDrawErase(false)
+    setDrawMode(true)
+    setActivePixelObjectId(drawing.id)
+    setActiveTab('draw')
+  }
+
+  function saveIconFromDrawing() {
+    const drawing = project.objects.find((o) => o.id === iconSaveTargetId)
+    if (!drawing || drawing.kind !== 'pixels') return
+    const result = pixelObjectToIcon(drawing, iconSaveName)
+    if (!result.ok) {
+      setIconSaveError(result.error)
+      return
+    }
+    setIconSaveError('')
+    updateCustomIcons([...customIcons.filter((i) => i.id !== result.icon.id), result.icon])
+    setSavedIcon(result.icon)
+    selectDraftIcon(result.icon)
+    setOpenIconGroup(CUSTOM_GROUP)
+  }
+
+  function deleteCustomIcon() {
+    updateCustomIcons(customIcons.filter((i) => i.id !== draftIconId))
+    setDraftIconId(ICON_LIBRARY[0].id)
+    setConfirmingDeleteIcon(false)
   }
 
   function selectDraftBorder(id: string) {
@@ -872,6 +950,13 @@ function App() {
       <button type="button" className="primary-btn" disabled={!borderFitsCanvas} onClick={addBorder}>
         Add border
       </button>
+      <button
+        type="button"
+        className={`toggle-btn${devMode ? ' toggle-btn--active' : ''}`}
+        onClick={toggleDevMode}
+      >
+        Developer mode: {devMode ? 'on' : 'off'}
+      </button>
     </>
   )
   const draftFont = getFont(draftFontId)
@@ -904,10 +989,12 @@ function App() {
     </>
   )
   const draftIconHasAccent = iconHasAccent(getIcon(draftIconId))
+  const allIcons = [...ICON_LIBRARY, ...customIcons]
+  const draftIsCustom = customIcons.some((i) => i.id === draftIconId)
   const iconsBody = (
     <>
       {ICON_GROUPS.map((group) => {
-        const icons = ICON_LIBRARY.filter((i) => i.group === group.id)
+        const icons = allIcons.filter((i) => i.group === group.id)
         if (icons.length === 0) return null
         const isOpen = openIconGroup === group.id
         return (
@@ -959,6 +1046,28 @@ function App() {
       <button type="button" className="primary-btn" onClick={addIconObject}>
         Add icon
       </button>
+      {devMode && (
+        <div className="dev-panel">
+          <button type="button" onClick={editIconAsDrawing}>
+            Edit this icon as a drawing
+          </button>
+          {draftIsCustom &&
+            (confirmingDeleteIcon ? (
+              <div className="button-row">
+                <button type="button" className="danger-btn" onClick={deleteCustomIcon}>
+                  Delete from My icons
+                </button>
+                <button type="button" onClick={() => setConfirmingDeleteIcon(false)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button type="button" className="danger-btn" onClick={() => setConfirmingDeleteIcon(true)}>
+                Delete this icon
+              </button>
+            ))}
+        </div>
+      )}
     </>
   )
   const stampBody = (
@@ -981,6 +1090,41 @@ function App() {
         {stampMode ? 'Done stamping' : 'Stamp mode'}
       </button>
     </>
+  )
+  const iconSaveTargetId = devMode ? (activePixelObjectId ?? (selectedObject?.kind === 'pixels' ? selectedObject.id : null)) : null
+  const iconSaveForm = iconSaveTargetId && (
+    <div className="dev-panel">
+      <label className="field-label">Save drawing as icon</label>
+      <input
+        type="text"
+        value={iconSaveName}
+        placeholder="Icon name"
+        onChange={(e) => setIconSaveName(e.target.value)}
+      />
+      <button type="button" className="primary-btn" onClick={saveIconFromDrawing}>
+        Save to My icons
+      </button>
+      {iconSaveError && <p className="field-hint dev-panel__error">{iconSaveError}</p>}
+      {savedIcon && (
+        <>
+          <p className="field-hint">Saved. To make it a built-in icon, paste this into an icon file:</p>
+          <select value={snippetGroup} onChange={(e) => setSnippetGroup(e.target.value)}>
+            {ICON_GROUPS.filter((g) => g.id !== CUSTOM_GROUP).map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
+              </option>
+            ))}
+          </select>
+          <textarea
+            className="dev-panel__source"
+            readOnly
+            rows={Math.min(savedIcon.rows.length + 10, 24)}
+            value={iconToSource(savedIcon, snippetGroup)}
+            onFocus={(e) => e.currentTarget.select()}
+          />
+        </>
+      )}
+    </div>
   )
   const drawBody = (
     <>
@@ -1008,6 +1152,7 @@ function App() {
       >
         {drawMode ? 'Done drawing' : 'Start drawing'}
       </button>
+      {iconSaveForm}
     </>
   )
 
@@ -1143,6 +1288,7 @@ function App() {
                   ? getIcon(selectedObject.iconId).name
                   : `${selectedObject.cells.length}-stitch drawing`}
             </p>
+            {selectedObject.kind === 'pixels' && iconSaveForm}
 
             {selectedObject.kind === 'text' && (
               <>

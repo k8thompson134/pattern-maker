@@ -785,3 +785,24 @@ details.tool-section > summary:hover {
   color: var(--text-dim);
   font-weight: 400;
 }
+
+.dev-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #c9c2b3;
+}
+
+.dev-panel__error {
+  color: #b3261e;
+}
+
+.dev-panel__source {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.75rem;
+  white-space: pre;
+}
