@@ -74,13 +74,13 @@ describe('borders', () => {
 })
 
 describe('border corners', () => {
-  it('motif tiles draw only their corner column inside the corner squares', () => {
-    for (const def of BORDERS.filter((d) => d.corner !== undefined)) {
+  it('blank-corner styles leave the four corner squares empty', () => {
+    for (const def of BORDERS.filter((d) => d.blankCorners)) {
       const t = def.rows.length
-      const cells = absolute(def, 41, 30).filter((c) => c.x < t && c.y < t)
-      const corner = def.rows.flatMap((row, r) => (row[def.corner!] === '0' ? [] : [r]))
+      const cells = absolute(def, 41, 30)
+      const inCorner = cells.filter((c) => Math.min(c.x, 40 - c.x) < t && Math.min(c.y, 29 - c.y) < t)
       expect(cells.length).toBeGreaterThan(0)
-      expect(cells.length).toBeLessThanOrEqual(corner.length * t * 2)
+      expect(inCorner).toHaveLength(0)
     }
   })
 })

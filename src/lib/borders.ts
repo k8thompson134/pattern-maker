@@ -11,8 +11,8 @@ export type BorderDef = {
   accent: string
   // Keep the motif upright along the bottom edge instead of mirroring it outward.
   upright?: boolean
-  // Tile column drawn in the four corner squares, so motifs start cleanly after each corner instead of colliding there.
-  corner?: number
+  // Leave the four corner squares empty so motifs start cleanly after each corner instead of colliding there.
+  blankCorners?: boolean
 }
 
 export const BORDERS: BorderDef[] = [
@@ -37,7 +37,7 @@ export const BORDERS: BorderDef[] = [
     main: '666',
     accent: '3607',
     upright: true,
-    corner: 6,
+    blankCorners: true,
   },
   {
     id: 'hearts-large',
@@ -46,7 +46,7 @@ export const BORDERS: BorderDef[] = [
     main: '666',
     accent: '3607',
     upright: true,
-    corner: 9,
+    blankCorners: true,
   },
   {
     id: 'vine',
@@ -54,7 +54,7 @@ export const BORDERS: BorderDef[] = [
     rows: ['00200000', '02200000', '11111111', '00000220', '00000020'],
     main: '701',
     accent: '704',
-    corner: 7,
+    blankCorners: true,
   },
   { id: 'daisies', name: 'Daisies', rows: ['011100', '112110', '011100'], main: '603', accent: '726' },
   {
@@ -84,7 +84,7 @@ function mod(n: number, m: number): number {
 }
 
 // Picks the tile phase for one run of stitches: mirror-symmetric about the run's center when the tile allows it,
-// else centered. Tiles with a corner column also prefer ends that fall on plain line rather than mid-motif.
+// else centered. Tiles with blank corners also prefer ends that fall on plain line rather than mid-motif.
 function edgePhase(def: BorderDef, length: number): number {
   const p = def.rows[0].length
   const centered = Math.floor((p - length) / 2)
@@ -95,7 +95,7 @@ function edgePhase(def: BorderDef, length: number): number {
     ),
   )
   if (symmetric.length === 0) return centered
-  if (def.corner === undefined) return symmetric[0]
+  if (!def.blankCorners) return symmetric[0]
   const filledAtStart = (o: number) => def.rows.filter((row) => row[mod(o, p)] !== '0').length
   return symmetric.reduce((best, o) => (filledAtStart(o) < filledAtStart(best) ? o : best))
 }
@@ -116,7 +116,7 @@ export function buildBorder(
   const w = width - 2 * margin
   const h = height - 2 * margin
   const cells: PixelCell[] = []
-  const inset = def.corner === undefined ? 0 : t
+  const inset = def.blankCorners ? t : 0
   const phaseH = edgePhase(def, w - 2 * inset)
   const phaseV = edgePhase(def, h - 2 * inset)
 
@@ -128,10 +128,9 @@ export function buildBorder(
       const side = distances.indexOf(d)
       const horizontal = side < 2
       const row = side === 1 && def.upright ? t - 1 - d : d
-      const inCorner = def.corner !== undefined && Math.min(x, w - 1 - x) < t && Math.min(y, h - 1 - y) < t
+      if (def.blankCorners && Math.min(x, w - 1 - x) < t && Math.min(y, h - 1 - y) < t) continue
       const along = (horizontal ? x : y) - inset
-      const column = inCorner ? def.corner! : mod(along + (horizontal ? phaseH : phaseV), p)
-      const ch = def.rows[row][column]
+      const ch = def.rows[row][mod(along + (horizontal ? phaseH : phaseV), p)]
       if (ch === '0') continue
       cells.push({ dx: x, dy: y, color: ch === '2' ? accent : main })
     }
