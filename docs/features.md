@@ -69,6 +69,7 @@ These rules explain most of the behavior (and most of the limits) below.
 | Characters | A–Z, 0–9, space, and `. , ! ? ' " - & : ; / # ( ) + = * % _ ♥` in every font (with smart quotes and dashes mapped automatically). Block and Tiny stitch lowercase as capitals; Mixed, Italic, Serif, and Script have true lowercase plus `à á â ä è é ê ë ì í î ï ò ó ô õ ö ù ú û ü ñ ç`. Any accented letter a font doesn't draw is stitched as its plain base letter, with a warning that says so. Any other character (`@`, `¿`, …) becomes a blank space, with a warning naming it, both in the Text tool and when editing a placed text object. |
 | Direction | Across (left to right) or Down (letters stacked vertically). |
 | Editing | The words, font, direction, and color can be changed after placing. |
+| Split into letters | Turns a placed word into one text object per letter, in the same spots, so each letter can be moved, recolored, or rotated on its own. Spaces are dropped. The stitches don't change, but the letters can't be re-joined into one word (undo does that). |
 | Size | 1× to 6×. See section 2. |
 | Spacing | Letter and line spacing are fixed by the font. There's no kerning or multi-line text; each line is a separate text object. |
 
@@ -111,9 +112,9 @@ you can move or delete afterward.
 
 | Feature | Details |
 | --- | --- |
-| Paint | Tap a cell to place a stitch in the chosen color. Different colors can be mixed in one drawing. |
-| Erase | Removes a stitch from whichever drawing is on top at that spot, including drawings from earlier sessions. A drawing erased down to nothing disappears. Erase can't remove stitches from text or icons. |
-| Input | One tap per stitch. There's no drag-to-paint, line, rectangle, fill, or mirror tool. |
+| Paint | Tap or drag across cells to place stitches in the chosen color. Different colors can be mixed in one drawing. Fast drags are filled in as a straight line, so no cells are skipped. |
+| Erase | Tap or drag to remove stitches from whichever drawing is on top at that spot, including drawings from earlier sessions. A drawing erased down to nothing disappears. Erase can't remove stitches from text or icons. |
+| Input | Tap for one stitch, or drag for a stroke. A whole stroke is one undo step. There's no line, rectangle, fill, or mirror tool. |
 | Sessions | Each Start drawing → Done drawing session creates one new drawing object. An earlier drawing can't be reopened to add to it. |
 | After drawing | A drawing can be moved, duplicated, layered, aligned, and grouped. It can't be resized, rotated, recolored as a whole, or repeated. |
 
@@ -125,7 +126,8 @@ you can move or delete afterward.
 | Move | Drag, the on-screen arrow pad (1 stitch per tap), or the keyboard arrow keys (Shift+arrow = 5 stitches). Objects can't leave the canvas. |
 | Resize | Drag a corner handle, or use the − / + size buttons (text and icons only). |
 | Rotate | 0°, 90°, 180°, 270° clockwise (text and icons). The object turns in place, around its center. The rotated shape is what's stitched and exported. |
-| Align | To the canvas: left, center, right, top, middle, bottom. |
+| Align | Left, center, right, top, middle, bottom. One object aligns to the canvas. A multi-selection can align to the selection's outer edges or to the canvas. A group moves as one unit. |
+| Space evenly | With three or more objects or groups selected, spreads them so the gaps between them are equal, across or down. The outermost ones stay put. |
 | Layer order | Send backward, bring forward, send to back, bring to front. |
 | Duplicate | Places a copy just to the right. |
 | Repeat | Makes a row or column of copies: count 2–50, gap 0–50 stitches between copies. Useful for border strips. Single text or icon only. |
@@ -133,8 +135,8 @@ you can move or delete afterward.
 | Group | Group two or more objects; tapping any member then selects the whole group. Ungroup to split them apart. Duplicating a group makes a new, separate group. |
 | Delete | Removes the selected object(s). |
 
-Align, layer order, rotate, resize, and repeat apply to one object at a time,
-not to a multi-selection or group.
+Layer order, rotate, resize, and repeat apply to one object at a time, not to a
+multi-selection or group.
 
 ### 3.7 Colors and threads
 
@@ -288,9 +290,9 @@ A ✱ in the Roadmap column means the item is already planned in `scope.md`.
 | Erase can't touch text or icons | Stitchers often tweak a single stitch of a letter or motif. | Medium | |
 | ~~No "save as" / duplicate whole project~~ | ~~Fixed — task #543, see section 5.~~ | Fixed | |
 | Can't reopen an earlier drawing | Adding to a drawing later makes a new, separate object. | Medium | |
-| Tap-one-stitch-at-a-time drawing | Slow for anything but tiny touches. Drag-to-paint, lines, fill, and mirror are standard in pixel/grid editors. | Medium | |
+| No line, fill, or mirror tool | Drag-to-paint is done, but rectangles, fill, and mirror are standard in pixel/grid editors. | Low | |
 | Can't turn text or an icon into editable stitches | Would allow customizing a letter or motif stitch by stitch. | Medium | |
-| Align/rotate/resize don't work on groups | Grouped layouts must be positioned by nudging. | Low | |
+| Rotate/resize don't work on groups | Align and spacing treat a group as a unit, but a grouped layout can't be turned or scaled as a whole. | Low | |
 | No mirror/flip | Symmetric designs and facing motifs (two birds facing each other). | Low | ✱ (pixel-art section) |
 
 ### 6.7 Stitch types

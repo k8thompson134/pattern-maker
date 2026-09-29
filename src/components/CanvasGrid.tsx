@@ -6,6 +6,8 @@ import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
 import { nextSelection, selectionBounds } from '../lib/selection'
 import { symbolTextIsBlack } from '../lib/chartLayout'
+import { createId } from '../lib/id'
+import { lineCells, type GridCell } from '../lib/pixelObject'
 
 type CanvasGridProps = {
   widthStitches: number
@@ -19,8 +21,8 @@ type CanvasGridProps = {
   onResize: (id: string, patch: { scale: number; x: number; y: number }) => void
   drawMode: boolean
   drawErase: boolean
-  onPaintCell: (gx: number, gy: number) => void
-  onEraseCell: (gx: number, gy: number) => void
+  onPaintCells: (cells: GridCell[], strokeId: string) => void
+  onEraseCells: (cells: GridCell[], strokeId: string) => void
   stampMode: boolean
   onStamp: (gx: number, gy: number) => void
   symbols: Map<string, string>
@@ -45,8 +47,8 @@ export function CanvasGrid({
   onResize,
   drawMode,
   drawErase,
-  onPaintCell,
-  onEraseCell,
+  onPaintCells,
+  onEraseCells,
   stampMode,
   onStamp,
   symbols,
@@ -218,17 +220,40 @@ export function CanvasGrid({
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
 
+  const strokeRef = useRef<{ id: string; last: GridCell } | null>(null)
+
+  function drawCellAt(e: React.PointerEvent): GridCell | null {
+    const svgRect = svgRef.current?.getBoundingClientRect()
+    if (!svgRect) return null
+    return { gx: Math.floor((e.clientX - svgRect.left) / cell), gy: Math.floor((e.clientY - svgRect.top) / cell) }
+  }
+
+  function applyStroke(cells: GridCell[], strokeId: string) {
+    const onCanvas = cells.filter((c) => c.gx >= 0 && c.gy >= 0 && c.gx < widthStitches && c.gy < heightStitches)
+    if (onCanvas.length === 0) return
+    if (drawErase) onEraseCells(onCanvas, strokeId)
+    else onPaintCells(onCanvas, strokeId)
+  }
+
   function handleDrawPointerDown(e: React.PointerEvent) {
     e.preventDefault()
-    const svgRect = svgRef.current?.getBoundingClientRect()
-    if (!svgRect) return
-    const gx = Math.floor((e.clientX - svgRect.left) / cell)
-    const gy = Math.floor((e.clientY - svgRect.top) / cell)
-    if (drawErase) {
-      onEraseCell(gx, gy)
-    } else {
-      onPaintCell(gx, gy)
-    }
+    const at = drawCellAt(e)
+    if (!at) return
+    e.currentTarget.setPointerCapture(e.pointerId)
+    strokeRef.current = { id: createId(), last: at }
+    applyStroke([at], strokeRef.current.id)
+  }
+
+  function handleDrawPointerMove(e: React.PointerEvent) {
+    const stroke = strokeRef.current
+    const at = drawCellAt(e)
+    if (!stroke || !at || (at.gx === stroke.last.gx && at.gy === stroke.last.gy)) return
+    applyStroke(lineCells(stroke.last, at).slice(1), stroke.id)
+    stroke.last = at
+  }
+
+  function handleDrawPointerEnd() {
+    strokeRef.current = null
   }
 
   function handleStampPointerDown(e: React.PointerEvent) {
@@ -363,6 +388,9 @@ export function CanvasGrid({
           fill="transparent"
           className="draw-overlay"
           onPointerDown={handleDrawPointerDown}
+          onPointerMove={handleDrawPointerMove}
+          onPointerUp={handleDrawPointerEnd}
+          onPointerCancel={handleDrawPointerEnd}
         />
       )}
       {stampMode && (

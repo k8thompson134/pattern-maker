@@ -3,7 +3,7 @@ import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { BorderThumb } from './components/BorderThumb'
 import { IconThumb } from './components/IconThumb'
-import { createEmptyProject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
+import { createEmptyProject, type CanvasObject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
 import { buildCozyExample } from './lib/examples'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
@@ -22,8 +22,9 @@ import {
 import { measureIcon } from './lib/iconRender'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
-import { alignObject, type Alignment } from './lib/align'
-import { createEmptyPixelObject, eraseCell, paintCell } from './lib/pixelObject'
+import { alignObject, alignUnits, countUnits, distributeUnits, type Alignment, type DistributeAxis } from './lib/align'
+import { splitTextObject } from './lib/splitText'
+import { createEmptyPixelObject, eraseCells, paintCells, type GridCell } from './lib/pixelObject'
 import { exportProjectToPdf } from './lib/exportPdf'
 import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
 import { replaceColor } from './lib/recolor'
@@ -163,6 +164,7 @@ function App() {
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
+  const [alignTarget, setAlignTarget] = useState<'selection' | 'canvas'>('selection')
   const [confirmingNewProject, setConfirmingNewProject] = useState(false)
   const [confirmingDeleteProject, setConfirmingDeleteProject] = useState(false)
   const [projectList, setProjectList] = useState(() => listProjects())
@@ -185,7 +187,12 @@ function App() {
   const [stampMode, setStampMode] = useState(false)
   const [drawErase, setDrawErase] = useState(false)
   const [drawColor, setDrawColor] = useState(DMC_STARTER_COLORS[0])
-  const [activePixelObjectId, setActivePixelObjectId] = useState<string | null>(null)
+  const [activePixelObjectId, setActivePixelObjectIdState] = useState<string | null>(null)
+  const activePixelRef = useRef<string | null>(null)
+  function setActivePixelObjectId(id: string | null) {
+    activePixelRef.current = id
+    setActivePixelObjectIdState(id)
+  }
   const [widthInput, setWidthInput] = useState(() => String(project.widthStitches))
   const [heightInput, setHeightInput] = useState(() => String(project.heightStitches))
   const [spiInput, setSpiInput] = useState(() => String(project.fabric.stitchesPerInch))
@@ -210,7 +217,8 @@ function App() {
       const filtered = ids.filter((id) => project.objects.some((o) => o.id === id))
       return filtered.length === ids.length ? ids : filtered
     })
-    setActivePixelObjectId((id) => (id && !project.objects.some((o) => o.id === id) ? null : id))
+    const active = activePixelRef.current
+    if (active && !project.objects.some((o) => o.id === active)) setActivePixelObjectId(null)
   }, [project])
 
   useEffect(() => {
@@ -567,6 +575,43 @@ function App() {
     }))
   }
 
+  function applyMovedObjects(moved: CanvasObject[]) {
+    const byId = new Map(moved.map((o) => [o.id, o]))
+    setProject((p) => {
+      const changed = p.objects.some((o) => {
+        const m = byId.get(o.id)
+        return m && (m.x !== o.x || m.y !== o.y)
+      })
+      if (!changed) return p
+      return { ...p, objects: p.objects.map((o) => byId.get(o.id) ?? o), updatedAt: new Date().toISOString() }
+    })
+  }
+
+  const selectionUnitCount = countUnits(selectedObjects)
+
+  function alignSelection(alignment: Alignment) {
+    const canvasBox = { x: 0, y: 0, width: project.widthStitches, height: project.heightStitches }
+    const reference = selectionUnitCount > 1 && alignTarget === 'selection' ? selectionBounds(selectedObjects)! : canvasBox
+    applyMovedObjects(alignUnits(selectedObjects, alignment, reference, project.widthStitches, project.heightStitches))
+  }
+
+  function distributeSelection(axis: DistributeAxis) {
+    applyMovedObjects(distributeUnits(selectedObjects, axis))
+  }
+
+  function splitSelectedText() {
+    if (!selectedObject || selectedObject.kind !== 'text') return
+    const letters = splitTextObject(selectedObject)
+    if (letters.length < 2) return
+    const sourceId = selectedObject.id
+    setProject((p) => {
+      const idx = p.objects.findIndex((o) => o.id === sourceId)
+      if (idx === -1) return p
+      return { ...p, objects: [...p.objects.slice(0, idx), ...letters, ...p.objects.slice(idx + 1)], updatedAt: new Date().toISOString() }
+    })
+    setSelectedIds(letters.map((l) => l.id))
+  }
+
   function reorderSelectedObject(kind: 'forward' | 'backward' | 'front' | 'back') {
     if (!selectedObject) return
     const id = selectedObject.id
@@ -591,36 +636,39 @@ function App() {
     })
   }
 
-  function paintPixel(gx: number, gy: number) {
-    const target = activePixelObjectId ? project.objects.find((o) => o.id === activePixelObjectId) : null
-    if (target && target.kind === 'pixels') {
-      const targetId = target.id
-      setProject((p) => ({
-        ...p,
-        objects: p.objects.map((o) => (o.id === targetId && o.kind === 'pixels' ? paintCell(o, gx, gy, drawColor) : o)),
-        updatedAt: new Date().toISOString(),
-      }))
-      return
-    }
-    const newObject = paintCell(createEmptyPixelObject(), gx, gy, drawColor)
-    setActivePixelObjectId(newObject.id)
-    setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
+  // A stroke arrives as many batches with the same strokeId; they coalesce into one
+  // undo step. The target drawing is resolved inside the updater against the latest
+  // project, so batches landing before a re-render still hit the same drawing.
+  function paintPixels(cells: GridCell[], strokeId: string) {
+    const targetId = activePixelRef.current ?? createId()
+    if (!activePixelRef.current) setActivePixelObjectId(targetId)
+    setProject((p) => {
+      const existing = p.objects.find((o) => o.id === targetId && o.kind === 'pixels')
+      if (existing && existing.kind === 'pixels') {
+        const painted = paintCells(existing, cells, drawColor)
+        return { ...p, objects: p.objects.map((o) => (o === existing ? painted : o)), updatedAt: new Date().toISOString() }
+      }
+      const created = paintCells({ ...createEmptyPixelObject(), id: targetId }, cells, drawColor)
+      return { ...p, objects: [...p.objects, created], updatedAt: new Date().toISOString() }
+    }, `draw-stroke-${strokeId}`)
   }
 
-  // Erases from the topmost drawing that has a stitch here — any drawing, not just
-  // the one from the current session. A drawing erased down to nothing is removed.
-  function erasePixel(gx: number, gy: number) {
-    const target = [...project.objects]
-      .reverse()
-      .find((o) => o.kind === 'pixels' && o.cells.some((c) => o.x + c.dx === gx && o.y + c.dy === gy))
-    if (!target) return
-    setProject((p) => ({
-      ...p,
-      objects: p.objects
-        .map((o) => (o.id === target.id && o.kind === 'pixels' ? eraseCell(o, gx, gy) : o))
-        .filter((o) => o.kind !== 'pixels' || o.cells.length > 0),
-      updatedAt: new Date().toISOString(),
-    }))
+  // Erases from the topmost drawing that has a stitch at each cell — any drawing, not
+  // just the one from the current session. A drawing erased down to nothing is removed.
+  function erasePixels(cells: GridCell[], strokeId: string) {
+    setProject((p) => {
+      let objects = p.objects
+      for (const cell of cells) {
+        const target = [...objects]
+          .reverse()
+          .find((o) => o.kind === 'pixels' && o.cells.some((c) => o.x + c.dx === cell.gx && o.y + c.dy === cell.gy))
+        if (!target || target.kind !== 'pixels') continue
+        const erased = eraseCells(target, [cell])
+        objects = objects.map((o) => (o === target ? erased : o))
+      }
+      if (objects === p.objects) return p
+      return { ...p, objects: objects.filter((o) => o.kind !== 'pixels' || o.cells.length > 0), updatedAt: new Date().toISOString() }
+    }, `draw-stroke-${strokeId}`)
   }
 
   function toggleDrawMode() {
@@ -1327,6 +1375,17 @@ function App() {
                   )
                 })()}
 
+                <div className="button-row">
+                  <button
+                    type="button"
+                    disabled={splitTextObject(selectedObject).length < 2}
+                    onClick={splitSelectedText}
+                    title="Replace this text with one object per letter, so each can be moved or recolored on its own"
+                  >
+                    Split into letters
+                  </button>
+                </div>
+
                 <label className="field-label">Font</label>
                 <select
                   value={getFont(selectedObject.font).id}
@@ -1565,6 +1624,57 @@ function App() {
                 </button>
               )}
             </div>
+
+            <details className="selected-subsection">
+              <summary>Align &amp; distribute</summary>
+              {selectionUnitCount > 1 && (
+                <div className="button-row">
+                  {(['selection', 'canvas'] as const).map((target) => (
+                    <button
+                      key={target}
+                      type="button"
+                      className={`toggle-btn${alignTarget === target ? ' toggle-btn--active' : ''}`}
+                      onClick={() => setAlignTarget(target)}
+                    >
+                      {target === 'selection' ? 'To selection' : 'To canvas'}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <label className="field-label">Align</label>
+              <div className="button-row">
+                <button type="button" onClick={() => alignSelection('left')}>
+                  Left
+                </button>
+                <button type="button" onClick={() => alignSelection('center-h')}>
+                  Center
+                </button>
+                <button type="button" onClick={() => alignSelection('right')}>
+                  Right
+                </button>
+              </div>
+              <div className="button-row">
+                <button type="button" onClick={() => alignSelection('top')}>
+                  Top
+                </button>
+                <button type="button" onClick={() => alignSelection('center-v')}>
+                  Middle
+                </button>
+                <button type="button" onClick={() => alignSelection('bottom')}>
+                  Bottom
+                </button>
+              </div>
+              <label className="field-label">Space evenly</label>
+              <div className="button-row">
+                <button type="button" disabled={selectionUnitCount < 3} onClick={() => distributeSelection('horizontal')}>
+                  Across
+                </button>
+                <button type="button" disabled={selectionUnitCount < 3} onClick={() => distributeSelection('vertical')}>
+                  Down
+                </button>
+              </div>
+              {selectionUnitCount < 3 && <p className="tool-placeholder">Spacing evenly needs three or more objects or groups.</p>}
+            </details>
           </div>
         )}
 
@@ -1624,7 +1734,7 @@ function App() {
           <div className="mode-chip">
             <span>
               {drawMode
-                ? `Drawing — tap cells to ${drawErase ? 'erase' : 'paint'}`
+                ? `Drawing — tap or drag to ${drawErase ? 'erase' : 'paint'}`
                 : stampMode
                   ? 'Stamping — tap to drop decorations'
                   : 'Selecting multiple — tap objects to add/remove'}
@@ -1650,8 +1760,8 @@ function App() {
             onResize={resizeObject}
             drawMode={drawMode}
             drawErase={drawErase}
-            onPaintCell={paintPixel}
-            onEraseCell={erasePixel}
+            onPaintCells={paintPixels}
+            onEraseCells={erasePixels}
             stampMode={stampMode}
             onStamp={addIconObjectAt}
             symbols={symbols}
