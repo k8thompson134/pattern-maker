@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderObjectCells, rotateCells } from './objectCells'
+import { displayRotation, renderObjectCells, rotateCells } from './objectCells'
 import { measureObject } from './objectMeasure'
 import { flattenProject } from './flattenProject'
 import { createEmptyProject, type IconObject } from './types'
@@ -83,5 +83,32 @@ describe('rotated objects', () => {
     const cells = flattenProject(project)
     expect(Math.max(...cells.map((c) => c.x)) - 5).toBe(12)
     expect(Math.max(...cells.map((c) => c.y)) - 5).toBe(8)
+  })
+})
+
+describe('displayRotation on mirrored objects', () => {
+  const base: IconObject = { id: 'a', kind: 'icon', iconId: 'wheelchair', scale: 1, x: 0, y: 0, rotation: 0, color }
+
+  it('leaves unmirrored and doubly-mirrored objects alone', () => {
+    expect(displayRotation(90)).toBe(90)
+    expect(displayRotation(90, true, true)).toBe(90)
+  })
+
+  it('is its own inverse', () => {
+    for (const a of [0, 90, 180, 270]) expect(displayRotation(displayRotation(a, true, false), true, false)).toBe(a)
+  })
+
+  it.each([
+    [true, false],
+    [false, true],
+    [true, true],
+  ])('a %s/%s-mirrored object turned to N° on screen is its 0° picture rotated clockwise N°', (h, v) => {
+    const flat = renderObjectCells({ ...base, mirrorH: h, mirrorV: v })
+    const { width, height } = measureObject(base)
+    for (const angle of [90, 180, 270]) {
+      const stored = displayRotation(angle, h, v)
+      const shown = renderObjectCells({ ...base, mirrorH: h, mirrorV: v, rotation: stored })
+      expect(key(shown)).toEqual(key(rotateCells(flat, width, height, angle)))
+    }
   })
 })

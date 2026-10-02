@@ -20,6 +20,7 @@ import {
   saveCustomIcons,
 } from './lib/customIcons'
 import { measureIcon } from './lib/iconRender'
+import { displayRotation } from './lib/objectCells'
 import { clampToCanvas, measureObject, MAX_OBJECT_SCALE } from './lib/objectMeasure'
 import { createId } from './lib/id'
 import { alignUnits, countUnits, distributeUnits, type Alignment, type DistributeAxis } from './lib/align'
@@ -561,6 +562,7 @@ function App() {
   // and x/y is the top-left of the rotated shape.
   function rotateSelectedObject(rotation: number) {
     if (!selectedObject || selectedObject.kind === 'pixels') return
+    rotation = displayRotation(rotation, selectedObject.mirrorH, selectedObject.mirrorV)
     const before = measureObject(selectedObject)
     const after = measureObject({ ...selectedObject, rotation })
     const patch = {
@@ -1615,7 +1617,7 @@ function App() {
                       <button
                         key={angle}
                         type="button"
-                        className={`toggle-btn${selectedObject.rotation === angle ? ' toggle-btn--active' : ''}`}
+                        className={`toggle-btn${displayRotation(selectedObject.rotation, selectedObject.mirrorH, selectedObject.mirrorV) === angle ? ' toggle-btn--active' : ''}`}
                         onClick={() => rotateSelectedObject(angle)}
                       >
                         {angle}°

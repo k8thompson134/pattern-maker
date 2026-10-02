@@ -25,6 +25,13 @@ export function flipCells(cells: FilledCell[], width: number, height: number, ho
   return cells.map((c) => ({ ...c, dx: horizontal ? width - 1 - c.dx : c.dx, dy: vertical ? height - 1 - c.dy : c.dy }))
 }
 
+// Mirroring is applied after rotation, so on a singly-mirrored object the stored angle
+// turns the opposite way on screen. The rotation buttons talk in on-screen angles; this
+// maps between them and the stored value (it is its own inverse).
+export function displayRotation(rotation: number, mirrorH?: boolean, mirrorV?: boolean): number {
+  return !!mirrorH !== !!mirrorV ? (360 - rotation) % 360 : rotation
+}
+
 export function renderObjectCells(obj: TextObject | IconObject): FilledCell[] {
   let size: { width: number; height: number }
   let cells: FilledCell[]
