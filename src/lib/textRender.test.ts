@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { accentDroppedChars, measureText, renderTextToCells, unsupportedChars } from './textRender'
-import { AVAILABLE_FONTS, FONT_BLOCK_5X7, FONT_ITALIC_5X9, FONT_MIXED_5X9 } from './fonts'
+import {
+  AVAILABLE_FONTS,
+  FONT_BLOCK_5X7,
+  FONT_ITALIC_5X9,
+  FONT_MIXED_5X9,
+  FONT_SCRIPT_6X9,
+  FONT_SERIF_5X9,
+} from './fonts'
 
 describe('renderTextToCells', () => {
   it('renders a single glyph at scale 1 with no cells outside the 5x7 box', () => {
@@ -166,3 +173,64 @@ describe('italic font', () => {
     expect(minX(slanted, 0) - minX(slanted, 6)).toBeGreaterThan(minX(upright, 0) - minX(upright, 6))
   })
 })
+
+describe('classic serif font', () => {
+  it('draws lowercase differently from uppercase', () => {
+    expect(renderTextToCells('a', FONT_SERIF_5X9)).not.toEqual(renderTextToCells('A', FONT_SERIF_5X9))
+  })
+
+  it('draws distinct foot serifs on capitals like I and H', () => {
+    const iCells = renderTextToCells('I', FONT_SERIF_5X9)
+    // Row 6 (base) should be 5 stitches wide for the full serif bar
+    const baseRow = iCells.filter((c) => c.dy === 6)
+    expect(baseRow.length).toBe(5)
+  })
+
+  it('drops descenders below the baseline to row 8', () => {
+    const gCells = renderTextToCells('g', FONT_SERIF_5X9)
+    expect(Math.max(...gCells.map((c) => c.dy))).toBe(8)
+  })
+
+  it('supports common punctuation and accented letters', () => {
+    expect(unsupportedChars('Kate & Sam: 2026! #1 (Home)', FONT_SERIF_5X9)).toEqual([])
+    const accented = renderTextToCells('é', FONT_SERIF_5X9)
+    expect(accented.filter((c) => c.dy < 2).length).toBeGreaterThan(0)
+  })
+
+  it('measures exactly what it renders', () => {
+    const text = 'Classic Sampler'
+    const cells = renderTextToCells(text, FONT_SERIF_5X9)
+    const { width } = measureText(text, FONT_SERIF_5X9)
+    expect(Math.max(...cells.map((c) => c.dx))).toBeLessThan(width)
+  })
+})
+
+describe('cursive script font', () => {
+  it('draws lowercase letters with an exit stroke on the baseline (row 6)', () => {
+    for (const ch of ['a', 'c', 'd', 'e', 'h', 'i', 'l', 'm', 'n', 'r', 's', 't', 'u']) {
+      const cells = renderTextToCells(ch, FONT_SCRIPT_6X9)
+      const baseExit = cells.filter((c) => c.dy === 6 && c.dx === Math.max(...cells.map((k) => k.dx)))
+      expect(baseExit.length, `exit stroke of ${ch}`).toBeGreaterThan(0)
+    }
+  })
+
+  it('draws looping ascenders up to row 0 and descenders down to row 8', () => {
+    const bCells = renderTextToCells('b', FONT_SCRIPT_6X9)
+    expect(Math.min(...bCells.map((c) => c.dy))).toBe(0)
+
+    const yCells = renderTextToCells('y', FONT_SCRIPT_6X9)
+    expect(Math.max(...yCells.map((c) => c.dy))).toBe(8)
+  })
+
+  it('supports common phrases, couples notation, and dates', () => {
+    expect(unsupportedChars('Mr. & Mrs. Anderson — Est. 2026 ♥', FONT_SCRIPT_6X9)).toEqual([])
+  })
+
+  it('measures horizontal advance accurately', () => {
+    const text = 'Sweet Dreams'
+    const cells = renderTextToCells(text, FONT_SCRIPT_6X9)
+    const { width } = measureText(text, FONT_SCRIPT_6X9)
+    expect(Math.max(...cells.map((c) => c.dx))).toBeLessThan(width)
+  })
+})
+

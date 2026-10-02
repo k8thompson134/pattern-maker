@@ -9,11 +9,23 @@ function stripAccent(char: string): string {
   return char.normalize('NFD')[0]
 }
 
-// Exact glyph, then the uppercase glyph, then the same lookups on the accent-stripped
-// base letter. Undefined when nothing fits.
+function normalizePunctuation(char: string): string {
+  if (char === '—' || char === '–') return '-'
+  if (char === '‘' || char === '’') return "'"
+  if (char === '“' || char === '”') return '"'
+  return char
+}
+
+// Exact glyph, then the uppercase glyph, then punctuation normalization,
+// then the same lookups on the accent-stripped base letter. Undefined when nothing fits.
 export function findGlyph(font: BitmapFont, char: string): string[] | undefined {
   const direct = font.glyphs[char] ?? font.glyphs[char.toUpperCase()]
   if (direct) return direct
+  const norm = normalizePunctuation(char)
+  if (norm !== char) {
+    const normGlyph = font.glyphs[norm] ?? font.glyphs[norm.toUpperCase()]
+    if (normGlyph) return normGlyph
+  }
   const base = stripAccent(char)
   if (base === char) return undefined
   return font.glyphs[base] ?? font.glyphs[base.toUpperCase()]
