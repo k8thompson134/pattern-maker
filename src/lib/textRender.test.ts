@@ -6,6 +6,13 @@ import {
   FONT_BLOCK_5X7,
   FONT_BOLD_6X7,
   FONT_BRAILLE,
+  FONT_DECO_5X9,
+  FONT_MICRO_4X5,
+  FONT_MONOGRAM_7X9,
+  FONT_OUTLINE_7X9,
+  FONT_PIXEL_5X5,
+  FONT_SAMPLER_5X7,
+  FONT_STENCIL_6X7,
   FONT_ITALIC_5X9,
   FONT_MIXED_5X9,
   FONT_SCRIPT_6X9,
@@ -305,5 +312,51 @@ describe('blackletter font', () => {
     const text = 'Ye Olde Shoppe'
     const cells = renderTextToCells(text, FONT_BLACKLETTER_6X9)
     expect(Math.max(...cells.map((c) => c.dx))).toBeLessThan(measureText(text, FONT_BLACKLETTER_6X9).width)
+  })
+})
+
+describe('display fonts', () => {
+  const phrase = 'Kate & Sam: 2026!'
+  const displayFonts = [FONT_MICRO_4X5, FONT_SAMPLER_5X7, FONT_DECO_5X9, FONT_PIXEL_5X5, FONT_STENCIL_6X7, FONT_OUTLINE_7X9]
+
+  it.each(displayFonts.map((f) => [f.id, f] as const))('%s draws every letter, digit and common punctuation mark', (_id, font) => {
+    expect(unsupportedChars(phrase, font)).toEqual([])
+  })
+
+  it.each([...displayFonts, FONT_MONOGRAM_7X9].map((f) => [f.id, f] as const))('%s measures exactly what it renders', (_id, font) => {
+    const text = 'WIGGLY 2026'
+    const cells = renderTextToCells(text, font)
+    expect(Math.max(...cells.map((c) => c.dx))).toBeLessThan(measureText(text, font).width)
+    expect(Math.max(...cells.map((c) => c.dy))).toBeLessThan(font.cellHeight)
+  })
+
+  it('draws lowercase as capitals in caps-only fonts', () => {
+    for (const font of [FONT_MICRO_4X5, FONT_DECO_5X9, FONT_PIXEL_5X5, FONT_STENCIL_6X7]) {
+      expect(renderTextToCells('abc', font)).toEqual(renderTextToCells('ABC', font))
+    }
+  })
+
+  it('keeps micro caps and pixel at five rows so they pair with Tiny', () => {
+    expect(FONT_MICRO_4X5.cellHeight).toBe(5)
+    expect(FONT_PIXEL_5X5.cellHeight).toBe(5)
+  })
+
+  it('cuts a one-stitch slit across every stencil letter', () => {
+    for (const ch of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789') {
+      expect(renderTextToCells(ch, FONT_STENCIL_6X7).some((c) => c.dy === 4), ch).toBe(false)
+    }
+  })
+
+  it('hollows out outline strokes', () => {
+    const cells = renderTextToCells('I', FONT_OUTLINE_7X9)
+    const key = new Set(cells.map((c) => `${c.dx},${c.dy}`))
+    expect(key.has('3,4')).toBe(false)
+    expect(key.has('2,4')).toBe(true)
+    expect(key.has('4,4')).toBe(true)
+  })
+
+  it('gives monogram a taller, wider capital than Block', () => {
+    expect(measureText('A', FONT_MONOGRAM_7X9)).toEqual({ width: 7, height: 9 })
+    expect(unsupportedChars('ABCDEFGHIJKLMNOPQRSTUVWXYZ 0123456789', FONT_MONOGRAM_7X9)).toEqual([])
   })
 })

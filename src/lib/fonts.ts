@@ -1,3 +1,5 @@
+import { DECO_ART, MICRO_ART, MONOGRAM_ART, PIXEL_ART, SAMPLER_ART, fromArt } from './fontsDisplay'
+
 export type BitmapFont = {
   id: string
   name: string
@@ -588,6 +590,108 @@ export const FONT_BRAILLE: BitmapFont = {
   glyphs: buildBraille(),
 }
 
+
+// --- DISPLAY FONTS ---
+// Glyph tables for these live in fontsDisplay.ts; the fonts here are assembled from them plus
+// punctuation and digits borrowed from the closest existing font, so a font never needs a full set drawn twice.
+const pickGlyphs = (font: BitmapFont, chars: string): Record<string, string[]> =>
+  Object.fromEntries([...chars].map((ch) => [ch, font.glyphs[ch]]))
+const padCentered = (rows: string[], height: number): string[] => {
+  const top = Math.floor((height - rows.length) / 2)
+  const blank = '0'.repeat(rows[0].length)
+  return [...Array(top).fill(blank), ...rows, ...Array(height - rows.length - top).fill(blank)]
+}
+const DIGITS_AND_PUNCT = '0123456789.,!?\'-&:;/#()+=*"%_♥'
+
+export const FONT_MICRO_4X5: BitmapFont = {
+  id: 'micro-4x5',
+  name: 'Micro caps 4x5',
+  cellWidth: 4,
+  cellHeight: 5,
+  glyphs: { ' ': G(Array(5).fill('000')), ...fromArt(MICRO_ART) },
+}
+
+export const FONT_SAMPLER_5X7: BitmapFont = {
+  id: 'sampler-5x7',
+  name: 'Sampler 5x7',
+  cellWidth: 7,
+  cellHeight: 7,
+  glyphs: { ' ': FONT_BLOCK_5X7.glyphs[' '], ...pickGlyphs(FONT_BLOCK_5X7, DIGITS_AND_PUNCT), ...fromArt(SAMPLER_ART) },
+}
+
+export const FONT_MONOGRAM_7X9: BitmapFont = {
+  id: 'monogram-7x9',
+  name: 'Monogram 7x9',
+  cellWidth: 7,
+  cellHeight: MIXED_HEIGHT,
+  glyphs: {
+    ' ': G(Array(MIXED_HEIGHT).fill('0000')),
+    ...Object.fromEntries(
+      [...'0123456789'].map((ch) => [ch, padCentered(FONT_BOLD_6X7.glyphs[ch], MIXED_HEIGHT)]),
+    ),
+    ...fromArt(MONOGRAM_ART),
+  },
+}
+
+export const FONT_DECO_5X9: BitmapFont = {
+  id: 'deco-5x9',
+  name: 'Art deco 5x9',
+  cellWidth: 5,
+  cellHeight: MIXED_HEIGHT,
+  glyphs: { ' ': G(Array(MIXED_HEIGHT).fill('000')), ...fromArt(DECO_ART) },
+}
+
+export const FONT_PIXEL_5X5: BitmapFont = {
+  id: 'pixel-5x5',
+  name: 'Pixel 5x5',
+  cellWidth: 5,
+  cellHeight: 5,
+  glyphs: { ...FONT_TINY_3X5.glyphs, ...PIXEL_ART },
+}
+
+// Bold with a one-stitch slit across the whole letter on row 4, like the bridges in a spray stencil.
+function stencilFont(font: BitmapFont, id: string, name: string): BitmapFont {
+  const cutRow = 4
+  const glyphs = Object.fromEntries(
+    Object.entries(font.glyphs).map(([ch, rows]) => {
+      if (!/[A-Z0-9]/.test(ch)) return [ch, rows]
+      return [
+        ch,
+        rows.map((row, y) => (y === cutRow ? '0'.repeat(row.length) : row)),
+      ]
+    }),
+  )
+  return { ...font, id, name, glyphs }
+}
+export const FONT_STENCIL_6X7 = stencilFont(FONT_BOLD_6X7, 'stencil-6x7', 'Stencil 6x7')
+
+// Each stroke of Block is grown by one stitch on every side, then only the edge of that shape is kept,
+// so every stroke becomes a hollow double line. Glyphs grow from 5x7 to 7x9.
+function outlineFont(font: BitmapFont, id: string, name: string): BitmapFont {
+  const glyphs = Object.fromEntries(
+    Object.entries(font.glyphs).map(([ch, rows]) => {
+      if (ch === ' ') return [ch, G(Array(font.cellHeight + 2).fill('0000'))]
+      const h = rows.length + 2
+      const w = rows[0].length + 2
+      const on = (x: number, y: number) => rows[y - 1]?.[x - 1] === '1'
+      const grown = (x: number, y: number) => {
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) if (on(x + dx, y + dy)) return true
+        return false
+      }
+      const out = Array.from({ length: h }, (_, y) =>
+        Array.from({ length: w }, (_, x) => {
+          if (!grown(x, y)) return '0'
+          const edge = !grown(x - 1, y) || !grown(x + 1, y) || !grown(x, y - 1) || !grown(x, y + 1)
+          return edge ? '1' : '0'
+        }).join(''),
+      )
+      return [ch, out]
+    }),
+  )
+  return { id, name, cellWidth: font.cellWidth + 2, cellHeight: font.cellHeight + 2, glyphs }
+}
+export const FONT_OUTLINE_7X9 = outlineFont(FONT_BLOCK_5X7, 'outline-7x9', 'Outline 7x9')
+
 export const AVAILABLE_FONTS: BitmapFont[] = [
   FONT_BLOCK_5X7,
   FONT_TINY_3X5,
@@ -598,6 +702,13 @@ export const AVAILABLE_FONTS: BitmapFont[] = [
   FONT_BOLD_6X7,
   FONT_BLACKLETTER_6X9,
   FONT_BRAILLE,
+  FONT_MICRO_4X5,
+  FONT_SAMPLER_5X7,
+  FONT_MONOGRAM_7X9,
+  FONT_DECO_5X9,
+  FONT_PIXEL_5X5,
+  FONT_STENCIL_6X7,
+  FONT_OUTLINE_7X9,
 ]
 
 export function getFont(id: string): BitmapFont {
