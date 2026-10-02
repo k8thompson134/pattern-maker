@@ -1,5 +1,6 @@
 import type { CanvasObject } from './types'
 import { measureObject } from './objectMeasure'
+import { renderObjectCells } from './objectCells'
 import { createId } from './id'
 
 export type Bounds = { x: number; y: number; width: number; height: number }
@@ -67,4 +68,24 @@ export function nextSelection(current: string[], clickedId: string, additive: bo
     return alreadySelected ? current.filter((id) => !group.includes(id)) : [...current, ...group.filter((id) => !current.includes(id))]
   }
   return alreadySelected ? current : group
+}
+
+// Objects (expanded to groups) with at least one stitch inside the box. Tested per stitch,
+// not by declared box, so a canvas-sized border doesn't join every marquee.
+export function objectsIntersectingBox(box: Bounds, objects: CanvasObject[]): string[] {
+  const boxRight = box.x + box.width
+  const boxBottom = box.y + box.height
+
+  const hitIds = objects
+    .filter((obj) => {
+      const cells = obj.kind === 'pixels' ? obj.cells : renderObjectCells(obj)
+      return cells.some((c) => {
+        const x = obj.x + c.dx
+        const y = obj.y + c.dy
+        return x >= box.x && x < boxRight && y >= box.y && y < boxBottom
+      })
+    })
+    .map((obj) => obj.id)
+
+  return expandToGroups(hitIds, objects)
 }

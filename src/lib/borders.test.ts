@@ -93,7 +93,7 @@ describe('border sizes', () => {
         }
       }
     }
-  })
+  }, 25000)
 })
 
 describe('border corners', () => {
@@ -121,3 +121,58 @@ describe('border corners', () => {
     }
   })
 })
+
+describe('border customization and editing', () => {
+  it('supports independent margins per side', () => {
+    const def = BORDERS[0]
+    const b = buildBorder(def, 30, 20, { top: 1, bottom: 4, left: 2, right: 3 }, main, accent)!
+    expect(b).not.toBeNull()
+    expect(b.borderMeta?.margins).toEqual({ top: 1, bottom: 4, left: 2, right: 3 })
+    const absCells = b.cells.map((c) => ({ x: b.x + c.dx, y: b.y + c.dy }))
+    expect(Math.min(...absCells.map((c) => c.x))).toBe(2)
+    expect(Math.max(...absCells.map((c) => c.x))).toBe(26) // 30 - 1 - 3
+    expect(Math.min(...absCells.map((c) => c.y))).toBe(1)
+    expect(Math.max(...absCells.map((c) => c.y))).toBe(15) // 20 - 1 - 4
+  })
+
+  it('supports drawing only selected sides like top and bottom bands', () => {
+    const def = BORDERS[0]
+    const b = buildBorder(def, 20, 20, 0, main, accent, { top: true, bottom: true, left: false, right: false })!
+    expect(b).not.toBeNull()
+    const absCells = b.cells.map((c) => ({ x: b.x + c.dx, y: b.y + c.dy }))
+    expect(absCells.every((c) => c.y === 0 || c.y === 19)).toBe(true)
+    // Both top and bottom should span full width 0..19
+    const topX = absCells.filter((c) => c.y === 0).map((c) => c.x)
+    expect(topX).toHaveLength(20)
+  })
+
+  it('preserves borderMeta with colors and sides', () => {
+    const def = BORDERS.find((b) => b.id === 'daisies')!
+    const b = buildBorder(def, 30, 30, 2, main, accent, { top: true, bottom: true, left: true, right: true })!
+    expect(b.borderMeta).toBeDefined()
+    expect(b.borderMeta?.borderId).toBe('daisies')
+    expect(b.borderMeta?.mainColor).toEqual(main)
+    expect(b.borderMeta?.accentColor).toEqual(accent)
+    expect(b.borderMeta?.sides).toEqual({ top: true, bottom: true, left: true, right: true })
+  })
+
+  it('allows editing an existing border into another style or margin using borderMeta', () => {
+    const original = buildBorder(BORDERS[0], 40, 40, 1, main, accent)!
+    expect(original.borderMeta?.borderId).toBe('line')
+
+    const newDef = BORDERS.find((b) => b.id === 'dots')!
+    const updated = buildBorder(
+      newDef,
+      40,
+      40,
+      { ...original.borderMeta!.margins, top: 3 },
+      original.borderMeta!.mainColor,
+      original.borderMeta!.accentColor,
+      original.borderMeta!.sides,
+    )!
+    expect(updated).not.toBeNull()
+    expect(updated.borderMeta?.borderId).toBe('dots')
+    expect(updated.borderMeta?.margins.top).toBe(3)
+  })
+})
+

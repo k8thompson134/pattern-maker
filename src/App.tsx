@@ -3,7 +3,7 @@ import { CanvasGrid, CELL_SIZE } from './components/CanvasGrid'
 import { ColorSwatchPicker } from './components/ColorSwatchPicker'
 import { BorderThumb } from './components/BorderThumb'
 import { IconThumb } from './components/IconThumb'
-import { createEmptyProject, type CanvasObject, type IconObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
+import { createEmptyProject, type BorderMargins, type BorderMetadata, type BorderSides, type CanvasObject, type IconObject, type PixelObject, type Project, type StitchColor, type TextDirection, type TextObject } from './lib/types'
 import { EXAMPLES } from './lib/examples'
 import { duplicateProject, listProjects, loadProject, saveProject, setActiveProject, deleteProject } from './lib/storage'
 import { AVAILABLE_FONTS, getFont } from './lib/fonts'
@@ -29,8 +29,8 @@ import { createEmptyPixelObject, eraseCells, paintCells, type GridCell } from '.
 import { exportProjectToPdf } from './lib/exportPdf'
 import { assignSymbols, symbolTextIsBlack } from './lib/chartLayout'
 import { replaceColor } from './lib/recolor'
-import { BORDERS, borderFits, borderHasAccent, buildBorder, defaultBorderColors } from './lib/borders'
-import { accentColorOf, iconHasAccent, iconPreviewColors, newIconColors, objectColors } from './lib/iconColors'
+import { BORDERS, borderFits, borderHasAccent, buildBorder, defaultBorderColors, getBorder } from './lib/borders'
+import { accentColorOf, byCode, iconHasAccent, iconPreviewColors, newIconColors, objectColors } from './lib/iconColors'
 import { flattenProject, summarizeColors } from './lib/flattenProject'
 import { acknowledgeBackup, recordEdit, shouldShowBackupNudge } from './lib/backupNudge'
 import { clampSelectionDelta, cloneSelection, selectionBounds } from './lib/selection'
@@ -158,6 +158,7 @@ function App() {
   const [draftFontId, setDraftFontId] = useState(AVAILABLE_FONTS[0].id)
   const [draftTextColor, setDraftTextColor] = useState(DMC_STARTER_COLORS[0])
   const [draftIconId, setDraftIconId] = useState(ICON_LIBRARY[0].id)
+  const [iconQuery, setIconQuery] = useState('')
   const [openIconGroup, setOpenIconGroup] = useState<string>(ICON_GROUPS[0].id)
   const [draftIconColor, setDraftIconColor] = useState(DMC_STARTER_COLORS[0])
   const [draftIconAccent, setDraftIconAccent] = useState(DMC_STARTER_COLORS[0])
@@ -165,6 +166,9 @@ function App() {
   const [draftBorderColor, setDraftBorderColor] = useState(() => defaultBorderColors(BORDERS[0]).main)
   const [draftBorderAccent, setDraftBorderAccent] = useState(() => defaultBorderColors(BORDERS[0]).accent)
   const [borderMargin, setBorderMargin] = useState(1)
+  const [draftBorderMargins, setDraftBorderMargins] = useState<BorderMargins>({ top: 1, bottom: 1, left: 1, right: 1 })
+  const [independentBorderMargins, setIndependentBorderMargins] = useState(false)
+  const [draftBorderSides, setDraftBorderSides] = useState<BorderSides>({ top: true, bottom: true, left: true, right: true })
   const [draftMiniIconId, setDraftMiniIconId] = useState(MINI_ICON_LIBRARY[0].id)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [multiSelect, setMultiSelect] = useState(false)
@@ -198,7 +202,10 @@ function App() {
   const [confirmingDeleteIcon, setConfirmingDeleteIcon] = useState(false)
   const [stampMode, setStampMode] = useState(false)
   const [drawErase, setDrawErase] = useState(false)
+  const [drawShape, setDrawShape] = useState<'free' | 'line' | 'rect' | 'fill'>('free')
+  const [drawBrushSize, setDrawBrushSize] = useState<number>(1)
   const [drawColor, setDrawColor] = useState(DMC_STARTER_COLORS[0])
+  const [eyedropperActive, setEyedropperActive] = useState(false)
   const [activePixelObjectId, setActivePixelObjectIdState] = useState<string | null>(null)
   const activePixelRef = useRef<string | null>(null)
   function setActivePixelObjectId(id: string | null) {
@@ -310,6 +317,10 @@ function App() {
   // The full per-object panel only applies to a single object; multi-selections and
   // groups get the smaller move/duplicate/delete/group panel instead.
   const selectedObject = selectedObjects.length === 1 ? selectedObjects[0] : null
+  const selectedBorder =
+    selectedObject?.kind === 'pixels' && selectedObject.borderMeta
+      ? (selectedObject as PixelObject & { borderMeta: BorderMetadata })
+      : null
   const selectionIsOneGroup =
     selectedObjects.length > 1 && selectedObjects.every((o) => o.groupId && o.groupId === selectedObjects[0].groupId)
   // Pixel drawings scale by adding/removing stitches, not a uniform NxN factor,
@@ -344,22 +355,26 @@ function App() {
     if (colors.color2) setDraftIconAccent(colors.color2)
   }
 
-  function addIconObject() {
-    const icon = getIcon(draftIconId)
+  function addIconObject(targetIcon?: IconDef) {
+    const icon = targetIcon ?? getIcon(draftIconId)
     const { width, height } = measureIcon(icon, 1)
+    const preview = iconPreviewColors(icon)
+    const mainCol = targetIcon ? byCode(preview.color) : draftIconColor
+    const accentCol = targetIcon ? byCode(preview.accent) : draftIconAccent
     const newObject: IconObject = {
       id: createId(),
       kind: 'icon',
-      iconId: draftIconId,
+      iconId: icon.id,
       scale: 1,
       x: Math.max(0, Math.floor((project.widthStitches - width) / 2)),
       y: Math.max(0, Math.floor((project.heightStitches - height) / 2)),
       rotation: 0,
-      color: draftIconColor,
-      ...(iconHasAccent(icon) ? { color2: draftIconAccent } : {}),
+      color: mainCol,
+      ...(iconHasAccent(icon) ? { color2: accentCol } : {}),
     }
     setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, newObject], updatedAt: new Date().toISOString() }))
+    setSelectedIds([newObject.id])
   }
 
   function toggleIconEditor() {
@@ -415,26 +430,83 @@ function App() {
     setConfirmingDeleteIcon(false)
   }
 
+  function isAllSides(s: BorderSides) {
+    return s.top && s.bottom && s.left && s.right
+  }
+  function isTopBottomSides(s: BorderSides) {
+    return s.top && s.bottom && !s.left && !s.right
+  }
+  function isLeftRightSides(s: BorderSides) {
+    return !s.top && !s.bottom && s.left && s.right
+  }
+
   function selectDraftBorder(id: string) {
-    const colors = defaultBorderColors(BORDERS.find((b) => b.id === id) ?? BORDERS[0])
+    const def = getBorder(id)
+    const colors = defaultBorderColors(def)
     setDraftBorderId(id)
     setDraftBorderColor(colors.main)
     setDraftBorderAccent(colors.accent)
+    if (selectedObject?.kind === 'pixels' && selectedObject.borderMeta) {
+      updateBorderObject({ borderId: id, mainColor: colors.main, accentColor: colors.accent })
+    }
+  }
+
+  function updateBorderObject(updates: Partial<BorderMetadata>) {
+    if (!selectedObject || selectedObject.kind !== 'pixels' || !selectedObject.borderMeta) return
+    const currentMeta = selectedObject.borderMeta
+    const newMeta: BorderMetadata = {
+      ...currentMeta,
+      ...updates,
+      margins: updates.margins ? { ...currentMeta.margins, ...updates.margins } : currentMeta.margins,
+      sides: updates.sides ? { ...currentMeta.sides, ...updates.sides } : currentMeta.sides,
+    }
+    const def = getBorder(newMeta.borderId)
+    const newBorder = buildBorder(
+      def,
+      project.widthStitches,
+      project.heightStitches,
+      newMeta.margins,
+      newMeta.mainColor,
+      newMeta.accentColor,
+      newMeta.sides,
+    )
+    if (!newBorder) return
+
+    setProject(
+      (p) => ({
+        ...p,
+        objects: p.objects.map((o) =>
+          o.id === selectedObject.id ? { ...newBorder, id: selectedObject.id, ...(o.groupId ? { groupId: o.groupId } : {}) } : o,
+        ),
+        updatedAt: new Date().toISOString(),
+      }),
+      `edit-border-${selectedObject.id}`,
+    )
+  }
+
+  function setBorderMarginUniform(val: number) {
+    const clamped = Math.max(0, val)
+    updateBorderObject({
+      margins: { top: clamped, bottom: clamped, left: clamped, right: clamped },
+    })
   }
 
   function addBorder() {
-    const def = BORDERS.find((b) => b.id === draftBorderId) ?? BORDERS[0]
+    const def = getBorder(draftBorderId)
+    const margins = independentBorderMargins ? draftBorderMargins : borderMargin
     const border = buildBorder(
       def,
       project.widthStitches,
       project.heightStitches,
-      borderMargin,
+      margins,
       draftBorderColor,
       draftBorderAccent,
+      draftBorderSides,
     )
     if (!border) return
     setStampMode(false)
     setProject((p) => ({ ...p, objects: [...p.objects, border], updatedAt: new Date().toISOString() }))
+    setSelectedIds([border.id])
   }
 
   function updateTextObject(patch: Partial<Omit<TextObject, 'id' | 'kind'>>, coalesceKey?: string) {
@@ -790,7 +862,34 @@ function App() {
         return
       }
 
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        if (hasSelection) {
+          setSelectedIds([])
+        } else if (drawMode) {
+          toggleDrawMode()
+        } else if (stampMode) {
+          setStampMode(false)
+        } else if (eyedropperActive) {
+          setEyedropperActive(false)
+        }
+        return
+      }
+
       if (!hasSelection) return
+
+      if ((e.metaKey || e.ctrlKey) && key === 'd') {
+        e.preventDefault()
+        duplicateSelection()
+        return
+      }
+
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault()
+        deleteSelection()
+        return
+      }
+
       const step = e.shiftKey ? 5 : 1
       switch (e.key) {
         case 'ArrowLeft':
@@ -815,7 +914,7 @@ function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasSelection, selectedObjects])
+  }, [hasSelection, selectedObjects, selectedIds, drawMode, stampMode, eyedropperActive])
 
   // Only one project exists and there's no undo, so replacing a non-empty design
   // asks first — inline, not a browser dialog.
@@ -961,9 +1060,16 @@ function App() {
     setReplacingCode(null)
   }
 
-  const draftBorderDef = BORDERS.find((b) => b.id === draftBorderId) ?? BORDERS[0]
+  const draftBorderDef = getBorder(draftBorderId)
   const draftBorderHasAccent = borderHasAccent(draftBorderDef)
-  const borderFitsCanvas = borderFits(draftBorderDef, project.widthStitches, project.heightStitches, borderMargin)
+  const currentBorderMargins = independentBorderMargins ? draftBorderMargins : borderMargin
+  const borderFitsCanvas = borderFits(
+    draftBorderDef,
+    project.widthStitches,
+    project.heightStitches,
+    currentBorderMargins,
+    draftBorderSides,
+  )
   const flipControls = (
     <>
       <label className="field-label">Flip</label>
@@ -1027,8 +1133,34 @@ function App() {
     </>
   )
 
+  const canvasPresets = [
+    { label: '40×40', w: 40, h: 40 },
+    { label: '60×60', w: 60, h: 60 },
+    { label: '80×80', w: 80, h: 80 },
+    { label: '4" hoop', w: Math.round(4 * project.fabric.stitchesPerInch), h: Math.round(4 * project.fabric.stitchesPerInch) },
+    { label: '6" hoop', w: Math.round(6 * project.fabric.stitchesPerInch), h: Math.round(6 * project.fabric.stitchesPerInch) },
+  ]
+
   const canvasBody = (
     <>
+      <label className="field-label">Presets</label>
+      <div className="button-row canvas-presets-row">
+        {canvasPresets.map((preset) => {
+          const isCurrent = project.widthStitches === preset.w && project.heightStitches === preset.h
+          return (
+            <button
+              key={preset.label}
+              type="button"
+              className={`toggle-btn${isCurrent ? ' toggle-btn--active' : ''}`}
+              onClick={() => setCanvasSize(preset.w, preset.h)}
+            >
+              {preset.label}
+            </button>
+          )
+        })}
+      </div>
+
+      <label className="field-label">Canvas size (stitches)</label>
       <div className="size-input-row">
         <label>
           W
@@ -1054,6 +1186,23 @@ function App() {
             onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
           />
         </label>
+      </div>
+      <div className="button-row canvas-nudge-row">
+        <button
+          type="button"
+          onClick={() => setCanvasSize(project.widthStitches - 5, project.heightStitches - 5)}
+          disabled={project.widthStitches <= 5 || project.heightStitches <= 5}
+          title="Shrink canvas by 5 stitches on both dimensions"
+        >
+          −5 both
+        </button>
+        <button
+          type="button"
+          onClick={() => setCanvasSize(project.widthStitches + 5, project.heightStitches + 5)}
+          title="Expand canvas by 5 stitches on both dimensions"
+        >
+          +5 both
+        </button>
       </div>
       <label className="field-label">Fabric count (stitches/inch)</label>
       <input
@@ -1088,20 +1237,64 @@ function App() {
         })}
       </div>
       <label className="field-label">{draftBorderHasAccent ? 'Main color' : 'Color'}</label>
-      <ColorSwatchPicker selected={draftBorderColor} onSelect={setDraftBorderColor} />
+      <ColorSwatchPicker selected={draftBorderColor} onSelect={setDraftBorderColor} projectColors={paletteColors} />
       {draftBorderHasAccent && (
         <>
           <label className="field-label">Accent color</label>
-          <ColorSwatchPicker selected={draftBorderAccent} onSelect={setDraftBorderAccent} />
+          <ColorSwatchPicker selected={draftBorderAccent} onSelect={setDraftBorderAccent} projectColors={paletteColors} />
         </>
       )}
+      <label className="field-label">Sides</label>
+      <div className="button-row">
+        <button
+          type="button"
+          className={`toggle-btn${isAllSides(draftBorderSides) ? ' toggle-btn--active' : ''}`}
+          onClick={() => setDraftBorderSides({ top: true, bottom: true, left: true, right: true })}
+        >
+          All
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn${isTopBottomSides(draftBorderSides) ? ' toggle-btn--active' : ''}`}
+          onClick={() => setDraftBorderSides({ top: true, bottom: true, left: false, right: false })}
+        >
+          Top & Bottom
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn${isLeftRightSides(draftBorderSides) ? ' toggle-btn--active' : ''}`}
+          onClick={() => setDraftBorderSides({ top: false, bottom: false, left: true, right: true })}
+        >
+          Left & Right
+        </button>
+      </div>
+      <div className="button-row">
+        {(['top', 'bottom', 'left', 'right'] as const).map((side) => {
+          const active = draftBorderSides[side]
+          return (
+            <button
+              key={side}
+              type="button"
+              className={`toggle-btn${active ? ' toggle-btn--active' : ''}`}
+              onClick={() => setDraftBorderSides((s) => ({ ...s, [side]: !s[side] }))}
+            >
+              {side.charAt(0).toUpperCase() + side.slice(1)}
+            </button>
+          )
+        })}
+      </div>
+
       <label className="field-label">Distance from edge</label>
       <div className="stepper-row">
         <button
           type="button"
           className="stepper-btn"
           disabled={borderMargin <= 0}
-          onClick={() => setBorderMargin(borderMargin - 1)}
+          onClick={() => {
+            const m = borderMargin - 1
+            setBorderMargin(m)
+            setDraftBorderMargins({ top: m, bottom: m, left: m, right: m })
+          }}
         >
           −
         </button>
@@ -1109,15 +1302,75 @@ function App() {
         <button
           type="button"
           className="stepper-btn"
-          disabled={borderMargin >= 10}
-          onClick={() => setBorderMargin(borderMargin + 1)}
+          disabled={borderMargin >= 15}
+          onClick={() => {
+            const m = borderMargin + 1
+            setBorderMargin(m)
+            setDraftBorderMargins({ top: m, bottom: m, left: m, right: m })
+          }}
         >
           +
         </button>
       </div>
+
+      <details className="selected-subsection">
+        <summary>Adjust sides separately (elongate/inset)</summary>
+        <div className="side-margins-grid">
+          {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
+            <div key={side} className="side-margin-item">
+              <span className="side-margin-label">{side.charAt(0).toUpperCase() + side.slice(1)}:</span>
+              <div className="stepper-row stepper-row--compact">
+                <button
+                  type="button"
+                  className="stepper-btn"
+                  disabled={draftBorderMargins[side] <= 0}
+                  onClick={() => {
+                    setIndependentBorderMargins(true)
+                    setDraftBorderMargins((prev) => ({ ...prev, [side]: Math.max(0, prev[side] - 1) }))
+                  }}
+                >
+                  −
+                </button>
+                <span className="stepper-value">{draftBorderMargins[side]}</span>
+                <button
+                  type="button"
+                  className="stepper-btn"
+                  disabled={draftBorderMargins[side] >= 20}
+                  onClick={() => {
+                    setIndependentBorderMargins(true)
+                    setDraftBorderMargins((prev) => ({ ...prev, [side]: prev[side] + 1 }))
+                  }}
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </details>
+
       {!borderFitsCanvas && <p className="field-hint">The canvas is too small for this border.</p>}
-      <button type="button" className="primary-btn" disabled={!borderFitsCanvas} onClick={addBorder}>
-        Add border
+      <button
+        type="button"
+        className="primary-btn"
+        disabled={!borderFitsCanvas}
+        onClick={() => {
+          if (selectedObject?.kind === 'pixels' && selectedObject.borderMeta) {
+            updateBorderObject({
+              borderId: draftBorderId,
+              margins: independentBorderMargins
+                ? draftBorderMargins
+                : { top: borderMargin, bottom: borderMargin, left: borderMargin, right: borderMargin },
+              sides: draftBorderSides,
+              mainColor: draftBorderColor,
+              accentColor: draftBorderAccent,
+            })
+          } else {
+            addBorder()
+          }
+        }}
+      >
+        {selectedObject?.kind === 'pixels' && selectedObject.borderMeta ? 'Update selected border' : 'Add border'}
       </button>
       <button
         type="button"
@@ -1159,68 +1412,148 @@ function App() {
           </option>
         ))}
       </select>
-      <ColorSwatchPicker selected={draftTextColor} onSelect={setDraftTextColor} />
+      <ColorSwatchPicker selected={draftTextColor} onSelect={setDraftTextColor} projectColors={paletteColors} />
       <button type="button" className="primary-btn" onClick={addTextObject}>
         Add text
       </button>
     </>
   )
-  const draftIconHasAccent = iconHasAccent(getIcon(draftIconId))
+  const draftIcon = getIcon(draftIconId)
+  const draftIconSize = measureIcon(draftIcon, 1)
+  const draftIconHasAccent = iconHasAccent(draftIcon)
   const allIcons = [...ICON_LIBRARY, ...customIcons]
   const draftIsCustom = customIcons.some((i) => i.id === draftIconId)
+  const trimmedIconQuery = iconQuery.trim().toLowerCase()
+  const matchingIcons = trimmedIconQuery
+    ? allIcons.filter((i) => i.name.toLowerCase().includes(trimmedIconQuery) || i.id.toLowerCase().includes(trimmedIconQuery))
+    : []
   const iconsBody = (
     <>
-      {ICON_GROUPS.map((group) => {
-        const icons = allIcons.filter((i) => i.group === group.id)
-        if (icons.length === 0) return null
-        const isOpen = openIconGroup === group.id
-        return (
-          <div key={group.id} className="icon-group">
-            <button
-              type="button"
-              className="icon-group__header"
-              aria-expanded={isOpen}
-              onClick={() => setOpenIconGroup(isOpen ? '' : group.id)}
-            >
-              <span>{group.name}</span>
-              <span className="icon-group__count">{icons.length}</span>
-            </button>
-            {isOpen && (
-              <div className="icon-grid">
-                {icons.map((icon) => {
-                  const active = draftIconId === icon.id
-                  const preview = iconPreviewColors(icon)
-                  return (
-                    <button
-                      key={icon.id}
-                      type="button"
-                      className={`icon-thumb-btn${active ? ' icon-thumb-btn--active' : ''}`}
-                      title={icon.name}
-                      onClick={() => selectDraftIcon(icon)}
-                    >
-                      <IconThumb
-                        icon={icon}
-                        color={active ? draftIconColor.hex : preview.color}
-                        accentColor={active ? draftIconAccent.hex : preview.accent}
-                      />
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+      <div className="icon-action-bar">
+        <div className="icon-action-bar__info">
+          <div className="icon-action-bar__preview">
+            <IconThumb
+              icon={draftIcon}
+              color={draftIconColor.hex}
+              accentColor={draftIconAccent.hex}
+            />
+          </div>
+          <div className="icon-action-bar__details">
+            <strong className="icon-action-bar__name">{draftIcon.name}</strong>
+            <span className="icon-action-bar__size">
+              {draftIconSize.width}×{draftIconSize.height} stitches
+            </span>
+          </div>
+        </div>
+        <button type="button" className="primary-btn" onClick={() => addIconObject()}>
+          Add icon
+        </button>
+      </div>
+
+      <div className="icon-search-row">
+        <input
+          type="search"
+          placeholder="Search icons (e.g. cat, star, coffee)..."
+          value={iconQuery}
+          onChange={(e) => setIconQuery(e.target.value)}
+        />
+        {iconQuery && (
+          <button type="button" className="icon-search-clear" onClick={() => setIconQuery('')} aria-label="Clear icon search">
+            ✕
+          </button>
+        )}
+      </div>
+
+      {trimmedIconQuery ? (
+        matchingIcons.length === 0 ? (
+          <p className="tool-placeholder">No icons match “{iconQuery}”.</p>
+        ) : (
+          <div className="icon-search-results">
+            <span className="field-label">Found {matchingIcons.length} icon{matchingIcons.length === 1 ? '' : 's'}</span>
+            <div className="icon-grid">
+              {matchingIcons.map((icon) => {
+                const active = draftIconId === icon.id
+                const preview = iconPreviewColors(icon)
+                return (
+                  <button
+                    key={icon.id}
+                    type="button"
+                    className={`icon-thumb-btn${active ? ' icon-thumb-btn--active' : ''}`}
+                    title={`${icon.name} (Double-click to add)`}
+                    onClick={() => selectDraftIcon(icon)}
+                    onDoubleClick={() => {
+                      selectDraftIcon(icon)
+                      addIconObject(icon)
+                    }}
+                  >
+                    <IconThumb
+                      icon={icon}
+                      color={active ? draftIconColor.hex : preview.color}
+                      accentColor={active ? draftIconAccent.hex : preview.accent}
+                    />
+                  </button>
+                )
+              })}
+            </div>
           </div>
         )
-      })}
+      ) : (
+        ICON_GROUPS.map((group) => {
+          const icons = allIcons.filter((i) => i.group === group.id)
+          if (icons.length === 0) return null
+          const isOpen = openIconGroup === group.id
+          return (
+            <div key={group.id} className="icon-group">
+              <button
+                type="button"
+                className="icon-group__header"
+                aria-expanded={isOpen}
+                onClick={() => setOpenIconGroup(isOpen ? '' : group.id)}
+              >
+                <span>{group.name}</span>
+                <span className="icon-group__count">{icons.length}</span>
+              </button>
+              {isOpen && (
+                <div className="icon-grid">
+                  {icons.map((icon) => {
+                    const active = draftIconId === icon.id
+                    const preview = iconPreviewColors(icon)
+                    return (
+                      <button
+                        key={icon.id}
+                        type="button"
+                        className={`icon-thumb-btn${active ? ' icon-thumb-btn--active' : ''}`}
+                        title={`${icon.name} (Double-click to add)`}
+                        onClick={() => selectDraftIcon(icon)}
+                        onDoubleClick={() => {
+                          selectDraftIcon(icon)
+                          addIconObject(icon)
+                        }}
+                      >
+                        <IconThumb
+                          icon={icon}
+                          color={active ? draftIconColor.hex : preview.color}
+                          accentColor={active ? draftIconAccent.hex : preview.accent}
+                        />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        })
+      )}
       <label className="field-label">{draftIconHasAccent ? 'Main color' : 'Color'}</label>
-      <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
+      <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} projectColors={paletteColors} />
       {draftIconHasAccent && (
         <>
           <label className="field-label">Accent color</label>
           <p className="field-hint">This icon has a second color for its details.</p>
-          <ColorSwatchPicker selected={draftIconAccent} onSelect={setDraftIconAccent} />
+          <ColorSwatchPicker selected={draftIconAccent} onSelect={setDraftIconAccent} projectColors={paletteColors} />
         </>
       )}
-      <button type="button" className="primary-btn" onClick={addIconObject}>
+      <button type="button" className="primary-btn" onClick={() => addIconObject()}>
         Add icon
       </button>
       {iconEditorOn && (
@@ -1262,7 +1595,7 @@ function App() {
           </button>
         ))}
       </div>
-      <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} />
+      <ColorSwatchPicker selected={draftIconColor} onSelect={setDraftIconColor} projectColors={paletteColors} />
       <button type="button" className={stampMode ? 'toggle-btn--active' : ''} onClick={toggleStampMode}>
         {stampMode ? 'Done stamping' : 'Stamp mode'}
       </button>
@@ -1308,20 +1641,101 @@ function App() {
       <div className="button-row">
         <button
           type="button"
-          className={`toggle-btn${!drawErase ? ' toggle-btn--active' : ''}`}
-          onClick={() => setDrawErase(false)}
+          className={`toggle-btn${!drawErase && !eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setDrawErase(false)
+            setEyedropperActive(false)
+            if (!drawMode) toggleDrawMode()
+          }}
         >
           Paint
         </button>
         <button
           type="button"
-          className={`toggle-btn${drawErase ? ' toggle-btn--active' : ''}`}
-          onClick={() => setDrawErase(true)}
+          className={`toggle-btn${drawErase && !eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setDrawErase(true)
+            setEyedropperActive(false)
+            if (!drawMode) toggleDrawMode()
+          }}
         >
           Erase
         </button>
+        <button
+          type="button"
+          className={`toggle-btn${eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setEyedropperActive((v) => !v)
+            if (!drawMode) toggleDrawMode()
+          }}
+        >
+          Pipette
+        </button>
       </div>
-      {!drawErase && <ColorSwatchPicker selected={drawColor} onSelect={setDrawColor} />}
+      <div className="button-row">
+        <button
+          type="button"
+          className={`toggle-btn${drawShape === 'free' && !eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setDrawShape('free')
+            setEyedropperActive(false)
+            if (!drawMode) toggleDrawMode()
+          }}
+        >
+          Freehand
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn${drawShape === 'line' && !eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setDrawShape('line')
+            setEyedropperActive(false)
+            if (!drawMode) toggleDrawMode()
+          }}
+        >
+          Straight line
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn${drawShape === 'rect' && !eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setDrawShape('rect')
+            setEyedropperActive(false)
+            if (!drawMode) toggleDrawMode()
+          }}
+        >
+          Box fill
+        </button>
+        <button
+          type="button"
+          className={`toggle-btn${drawShape === 'fill' && !eyedropperActive ? ' toggle-btn--active' : ''}`}
+          onClick={() => {
+            setDrawShape('fill')
+            setEyedropperActive(false)
+            if (!drawMode) toggleDrawMode()
+          }}
+        >
+          Fill area
+        </button>
+      </div>
+      {(drawShape === 'free' || drawShape === 'line') && (
+        <div className="brush-size-row">
+          <span className="field-label">Brush size:</span>
+          <div className="segmented-control" role="group" aria-label="Brush size">
+            {[1, 2, 3, 4].map((size) => (
+              <button
+                key={size}
+                type="button"
+                className={`toggle-btn${drawBrushSize === size ? ' toggle-btn--active' : ''}`}
+                onClick={() => setDrawBrushSize(size)}
+              >
+                {size}×{size}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      {!drawErase && <ColorSwatchPicker selected={drawColor} onSelect={setDrawColor} projectColors={paletteColors} />}
       <button
         type="button"
         className={drawMode ? 'toggle-btn--active' : ''}
@@ -1463,7 +1877,7 @@ function App() {
         {selectedObject && (
           <div className="tool-section selected-panel" ref={selectedPanelRef}>
             <div className="selected-panel__header">
-              <h3>Selected {selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
+              <h3>Selected {selectedBorder ? 'border' : selectedObject.kind === 'pixels' ? 'drawing' : selectedObject.kind}</h3>
               <div className="button-row">
                 <button type="button" onClick={duplicateSelection}>
                   Duplicate
@@ -1474,13 +1888,162 @@ function App() {
               </div>
             </div>
             <p className="selected-panel__label">
-              {selectedObject.kind === 'text'
-                ? `"${selectedObject.content}"`
-                : selectedObject.kind === 'icon'
-                  ? getIcon(selectedObject.iconId).name
-                  : `${selectedObject.cells.length}-stitch drawing`}
+              {selectedBorder
+                ? `${getBorder(selectedBorder.borderMeta.borderId).name} border (${selectedBorder.cells.length} stitches)`
+                : selectedObject.kind === 'text'
+                  ? `"${selectedObject.content}"`
+                  : selectedObject.kind === 'icon'
+                    ? getIcon(selectedObject.iconId).name
+                    : `${selectedObject.cells.length}-stitch drawing`}
             </p>
-            {selectedObject.kind === 'pixels' && iconSaveForm}
+            {selectedObject.kind === 'pixels' && !selectedBorder && iconSaveForm}
+
+            {selectedBorder && (
+              <div className="border-edit-controls">
+                <label className="field-label">Border style</label>
+                <select
+                  value={selectedBorder.borderMeta.borderId}
+                  onChange={(e) => updateBorderObject({ borderId: e.target.value })}
+                >
+                  {BORDERS.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+
+                <label className="field-label">Sides</label>
+                <div className="button-row">
+                  <button
+                    type="button"
+                    className={`toggle-btn${isAllSides(selectedBorder.borderMeta.sides) ? ' toggle-btn--active' : ''}`}
+                    onClick={() => updateBorderObject({ sides: { top: true, bottom: true, left: true, right: true } })}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-btn${isTopBottomSides(selectedBorder.borderMeta.sides) ? ' toggle-btn--active' : ''}`}
+                    onClick={() => updateBorderObject({ sides: { top: true, bottom: true, left: false, right: false } })}
+                  >
+                    Top & Bottom
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-btn${isLeftRightSides(selectedBorder.borderMeta.sides) ? ' toggle-btn--active' : ''}`}
+                    onClick={() => updateBorderObject({ sides: { top: false, bottom: false, left: true, right: true } })}
+                  >
+                    Left & Right
+                  </button>
+                </div>
+                <div className="button-row">
+                  {(['top', 'bottom', 'left', 'right'] as const).map((side) => {
+                    const active = selectedBorder.borderMeta.sides[side]
+                    return (
+                      <button
+                        key={side}
+                        type="button"
+                        className={`toggle-btn${active ? ' toggle-btn--active' : ''}`}
+                        onClick={() =>
+                          updateBorderObject({
+                            sides: {
+                              ...selectedBorder.borderMeta.sides,
+                              [side]: !active,
+                            },
+                          })
+                        }
+                      >
+                        {side.charAt(0).toUpperCase() + side.slice(1)}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <label className="field-label">Distance from edge</label>
+                <div className="stepper-row">
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    disabled={selectedBorder.borderMeta.margins.top <= 0}
+                    onClick={() => setBorderMarginUniform(selectedBorder.borderMeta.margins.top - 1)}
+                  >
+                    −
+                  </button>
+                  <span className="stepper-value">{selectedBorder.borderMeta.margins.top} stitches</span>
+                  <button
+                    type="button"
+                    className="stepper-btn"
+                    disabled={selectedBorder.borderMeta.margins.top >= 15}
+                    onClick={() => setBorderMarginUniform(selectedBorder.borderMeta.margins.top + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <details className="selected-subsection">
+                  <summary>Adjust sides separately (elongate/inset)</summary>
+                  <div className="side-margins-grid">
+                    {(['top', 'bottom', 'left', 'right'] as const).map((side) => (
+                      <div key={side} className="side-margin-item">
+                        <span className="side-margin-label">{side.charAt(0).toUpperCase() + side.slice(1)}:</span>
+                        <div className="stepper-row stepper-row--compact">
+                          <button
+                            type="button"
+                            className="stepper-btn"
+                            disabled={selectedBorder.borderMeta.margins[side] <= 0}
+                            onClick={() =>
+                              updateBorderObject({
+                                margins: {
+                                  ...selectedBorder.borderMeta.margins,
+                                  [side]: Math.max(0, selectedBorder.borderMeta.margins[side] - 1),
+                                },
+                              })
+                            }
+                          >
+                            −
+                          </button>
+                          <span className="stepper-value">{selectedBorder.borderMeta.margins[side]}</span>
+                          <button
+                            type="button"
+                            className="stepper-btn"
+                            disabled={selectedBorder.borderMeta.margins[side] >= 20}
+                            onClick={() =>
+                              updateBorderObject({
+                                margins: {
+                                  ...selectedBorder.borderMeta.margins,
+                                  [side]: selectedBorder.borderMeta.margins[side] + 1,
+                                },
+                              })
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+
+                <label className="field-label">
+                  {borderHasAccent(getBorder(selectedBorder.borderMeta.borderId)) ? 'Main color' : 'Color'}
+                </label>
+                <ColorSwatchPicker
+                  selected={selectedBorder.borderMeta.mainColor}
+                  onSelect={(c) => updateBorderObject({ mainColor: c })}
+                  projectColors={paletteColors}
+                />
+                {borderHasAccent(getBorder(selectedBorder.borderMeta.borderId)) && (
+                  <>
+                    <label className="field-label">Accent color</label>
+                    <ColorSwatchPicker
+                      selected={selectedBorder.borderMeta.accentColor}
+                      onSelect={(c) => updateBorderObject({ accentColor: c })}
+                      projectColors={paletteColors}
+                    />
+                  </>
+                )}
+              </div>
+            )}
 
             {selectedObject.kind === 'text' && (
               <>
@@ -1557,6 +2120,7 @@ function App() {
                   onSelect={(c) =>
                     selectedObject.kind === 'text' ? updateTextObject({ color: c }) : updateIconObject({ color: c })
                   }
+                  projectColors={paletteColors}
                 />
                 {selectedObject.kind === 'icon' && iconHasAccent(getIcon(selectedObject.iconId)) && (
                   <>
@@ -1565,6 +2129,7 @@ function App() {
                     <ColorSwatchPicker
                       selected={accentColorOf(selectedObject)}
                       onSelect={(c) => updateIconObject({ color2: c })}
+                      projectColors={paletteColors}
                     />
                   </>
                 )}
@@ -1811,7 +2376,13 @@ function App() {
           <div className="mode-chip">
             <span>
               {drawMode
-                ? `Drawing — tap or drag to ${drawErase ? 'erase' : 'paint'}`
+                ? eyedropperActive
+                  ? 'Pipette active — tap any stitch on the canvas to pick its color'
+                  : drawShape === 'fill'
+                    ? `Fill area — tap inside an outline to ${drawErase ? 'erase' : 'fill'}`
+                    : drawShape === 'rect'
+                      ? `Box fill — drag a rectangle to ${drawErase ? 'erase' : 'fill'}`
+                      : `Drawing (${drawBrushSize}×${drawBrushSize} ${drawShape === 'line' ? 'straight line' : 'brush'}) — ${drawShape === 'line' ? 'drag to draw line' : 'tap or drag'} to ${drawErase ? 'erase' : 'paint'}`
                 : stampMode
                   ? 'Stamping — tap to drop decorations'
                   : 'Selecting multiple — tap objects to add/remove'}
@@ -1837,6 +2408,15 @@ function App() {
             onResize={resizeObject}
             drawMode={drawMode}
             drawErase={drawErase}
+            drawShape={drawShape}
+            drawBrushSize={drawBrushSize}
+            drawColor={drawColor}
+            eyedropperActive={eyedropperActive}
+            onPickColor={(color) => {
+              setDrawColor(color)
+              setDrawErase(false)
+              setEyedropperActive(false)
+            }}
             onPaintCells={paintPixels}
             onEraseCells={erasePixels}
             stampMode={stampMode}

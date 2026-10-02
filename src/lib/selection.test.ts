@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { clampSelectionDelta, cloneSelection, expandToGroups, nextSelection, selectionBounds } from './selection'
+import {
+  clampSelectionDelta,
+  cloneSelection,
+  expandToGroups,
+  nextSelection,
+  objectsIntersectingBox,
+  selectionBounds,
+} from './selection'
 import type { PixelObject } from './types'
 import { DMC_STARTER_COLORS } from './dmcColors'
 
@@ -86,5 +93,42 @@ describe('nextSelection', () => {
 
   it('additive click on a selected member removes its whole group', () => {
     expect(nextSelection(['a', 'b', 'c'], 'a', true, objects)).toEqual(['c'])
+  })
+})
+
+describe('objectsIntersectingBox', () => {
+  const objects = [box('a', 0, 0, 5, 5, 'g1'), box('b', 10, 10, 5, 5, 'g1'), box('c', 20, 20, 5, 5)]
+
+  it('selects objects inside or overlapping the box', () => {
+    // Box covers (18, 18) to (22, 22), overlapping 'c'
+    const hit = objectsIntersectingBox({ x: 18, y: 18, width: 4, height: 4 }, objects)
+    expect(hit).toEqual(['c'])
+  })
+
+  it('expands to include grouped companions when one member is touched by the box', () => {
+    // Box touches only 'a' (0,0) to (2,2)
+    const hit = objectsIntersectingBox({ x: 0, y: 0, width: 2, height: 2 }, objects)
+    expect(hit).toContain('a')
+    expect(hit).toContain('b')
+  })
+
+  it('ignores empty space inside a hollow object such as a border', () => {
+    const frame: PixelObject = {
+      ...box('frame', 0, 0, 1, 1),
+      hollow: true,
+      cells: [
+        { dx: 0, dy: 0, color: DMC_STARTER_COLORS[0] },
+        { dx: 9, dy: 0, color: DMC_STARTER_COLORS[0] },
+        { dx: 0, dy: 9, color: DMC_STARTER_COLORS[0] },
+        { dx: 9, dy: 9, color: DMC_STARTER_COLORS[0] },
+      ],
+    }
+    expect(objectsIntersectingBox({ x: 3, y: 3, width: 3, height: 3 }, [frame])).toEqual([])
+    expect(objectsIntersectingBox({ x: 8, y: 8, width: 3, height: 3 }, [frame])).toEqual(['frame'])
+  })
+
+  it('returns empty array when marquee misses all objects', () => {
+    const hit = objectsIntersectingBox({ x: 30, y: 30, width: 5, height: 5 }, objects)
+    expect(hit).toEqual([])
   })
 })

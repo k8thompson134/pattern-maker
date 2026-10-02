@@ -5,15 +5,21 @@ import { DMC_STARTER_COLORS, searchDmcColors } from '../lib/dmcColors'
 type ColorSwatchPickerProps = {
   selected: StitchColor
   onSelect: (color: StitchColor) => void
+  projectColors?: StitchColor[]
   startExpanded?: boolean
 }
 
-export function ColorSwatchPicker({ selected, onSelect, startExpanded = false }: ColorSwatchPickerProps) {
+export function ColorSwatchPicker({ selected, onSelect, projectColors = [], startExpanded = false }: ColorSwatchPickerProps) {
   const [expanded, setExpanded] = useState(startExpanded)
   const [query, setQuery] = useState('')
   const selectedIsStarter = DMC_STARTER_COLORS.some((c) => c.dmcCode === selected.dmcCode)
   const swatches = selectedIsStarter ? DMC_STARTER_COLORS : [...DMC_STARTER_COLORS, selected]
   const matches = expanded ? searchDmcColors(query) : []
+
+  // Unique colors in project, deduplicating against each other
+  const uniqueProjectColors = Array.from(
+    new Map(projectColors.map((c) => [c.dmcCode, c])).values()
+  )
 
   function swatch(c: StitchColor) {
     return (
@@ -31,6 +37,14 @@ export function ColorSwatchPicker({ selected, onSelect, startExpanded = false }:
 
   return (
     <div className="color-picker">
+      {uniqueProjectColors.length > 0 && (
+        <div className="color-picker__project-section">
+          <span className="field-label color-picker__section-label">In this design</span>
+          <div className="swatch-row color-picker__project-row">
+            {uniqueProjectColors.map(swatch)}
+          </div>
+        </div>
+      )}
       <div className="swatch-row">
         {swatches.map(swatch)}
         <button type="button" className="color-picker__more" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>

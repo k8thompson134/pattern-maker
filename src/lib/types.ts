@@ -42,12 +42,35 @@ export type IconObject = {
 
 export type PixelCell = { dx: number; dy: number; color: StitchColor }
 
+export type BorderSides = {
+  top: boolean
+  bottom: boolean
+  left: boolean
+  right: boolean
+}
+
+export type BorderMargins = {
+  top: number
+  bottom: number
+  left: number
+  right: number
+}
+
+export type BorderMetadata = {
+  borderId: string
+  margins: BorderMargins
+  sides: BorderSides
+  mainColor: StitchColor
+  accentColor: StitchColor
+}
+
 export type PixelObject = {
   id: string
   kind: 'pixels'
   groupId?: string
   // Only the stitches themselves take taps, not the empty space inside the bounding box (used by borders).
   hollow?: boolean
+  borderMeta?: BorderMetadata
   x: number
   y: number
   cells: PixelCell[]

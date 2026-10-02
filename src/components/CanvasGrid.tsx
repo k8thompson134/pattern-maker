@@ -4,12 +4,13 @@ import { renderObjectCells } from '../lib/objectCells'
 import { cellColor } from '../lib/iconColors'
 import { measureObject, MAX_OBJECT_SCALE } from '../lib/objectMeasure'
 import { computeResizeFromHandle, type CornerHandle } from '../lib/resizeHandle'
-import { nextSelection, selectionBounds, type Bounds } from '../lib/selection'
+import { nextSelection, objectsIntersectingBox, selectionBounds, type Bounds } from '../lib/selection'
 import { symbolTextIsBlack } from '../lib/chartLayout'
 import { createId } from '../lib/id'
 import { inkBounds, inkUnionBounds } from '../lib/inkBounds'
 import { guideTargets, snapMove } from '../lib/snap'
-import { lineCells, type GridCell } from '../lib/pixelObject'
+import { expandByBrush, floodFillCells, lineCells, rectangleCells, straightLineCells, type GridCell } from '../lib/pixelObject'
+import type { StitchColor } from '../lib/types'
 
 type CanvasGridProps = {
   widthStitches: number
@@ -23,6 +24,11 @@ type CanvasGridProps = {
   onResize: (id: string, patch: { scale: number; x: number; y: number }) => void
   drawMode: boolean
   drawErase: boolean
+  drawShape?: 'free' | 'line' | 'rect' | 'fill'
+  drawBrushSize?: number
+  drawColor?: StitchColor
+  eyedropperActive?: boolean
+  onPickColor?: (color: StitchColor) => void
   onPaintCells: (cells: GridCell[], strokeId: string) => void
   onEraseCells: (cells: GridCell[], strokeId: string) => void
   stampMode: boolean
@@ -50,6 +56,11 @@ export function CanvasGrid({
   onResize,
   drawMode,
   drawErase,
+  drawShape,
+  drawBrushSize = 1,
+  drawColor,
+  eyedropperActive,
+  onPickColor,
   onPaintCells,
   onEraseCells,
   stampMode,
@@ -127,6 +138,9 @@ export function CanvasGrid({
     y: number
   } | null>(null)
 
+  const marqueeRef = useRef<{ startX: number; startY: number; additive: boolean } | null>(null)
+  const [marqueeBox, setMarqueeBox] = useState<Bounds | null>(null)
+
   function withPreview(obj: CanvasObject): CanvasObject {
     if (obj.id === resizePreview?.id && obj.kind !== 'pixels') {
       return { ...obj, scale: resizePreview.scale, x: resizePreview.x, y: resizePreview.y }
@@ -192,6 +206,20 @@ export function CanvasGrid({
       return
     }
 
+    if (marqueeRef.current) {
+      e.preventDefault()
+      const svgRect = svgRef.current?.getBoundingClientRect()
+      if (!svgRect) return
+      const curX = Math.round((e.clientX - svgRect.left) / cell)
+      const curY = Math.round((e.clientY - svgRect.top) / cell)
+      const minX = Math.max(0, Math.min(marqueeRef.current.startX, curX))
+      const maxX = Math.min(widthStitches, Math.max(marqueeRef.current.startX, curX))
+      const minY = Math.max(0, Math.min(marqueeRef.current.startY, curY))
+      const maxY = Math.min(heightStitches, Math.max(marqueeRef.current.startY, curY))
+      setMarqueeBox({ x: minX, y: minY, width: maxX - minX, height: maxY - minY })
+      return
+    }
+
     const drag = dragRef.current
     if (!drag) return
     e.preventDefault()
@@ -204,6 +232,22 @@ export function CanvasGrid({
   }
 
   function handlePointerUp() {
+    if (marqueeRef.current) {
+      if (marqueeBox && (marqueeBox.width > 0 || marqueeBox.height > 0)) {
+        const hit = objectsIntersectingBox(marqueeBox, objects)
+        if (marqueeRef.current.additive) {
+          const combined = Array.from(new Set([...selectedIds, ...hit]))
+          onSelectionChange(combined)
+        } else {
+          onSelectionChange(hit)
+        }
+      } else if (!marqueeRef.current.additive) {
+        onSelectionChange([])
+      }
+      marqueeRef.current = null
+      setMarqueeBox(null)
+    }
+
     if (resizeRef.current && resizePreview) {
       onResize(resizeRef.current.id, resizePreview)
     }
@@ -233,6 +277,8 @@ export function CanvasGrid({
     ;(e.target as Element).setPointerCapture(e.pointerId)
   }
 
+  const [linePreview, setLinePreview] = useState<{ start: GridCell; current: GridCell; cells: GridCell[] } | null>(null)
+  const lineStartRef = useRef<{ start: GridCell; strokeId: string; shiftKey: boolean } | null>(null)
   const strokeRef = useRef<{ id: string; last: GridCell } | null>(null)
 
   function drawCellAt(e: React.PointerEvent): GridCell | null {
@@ -241,10 +287,15 @@ export function CanvasGrid({
     return { gx: Math.floor((e.clientX - svgRect.left) / cell), gy: Math.floor((e.clientY - svgRect.top) / cell) }
   }
 
-  function applyStroke(cells: GridCell[], strokeId: string) {
-    const onCanvas = cells.filter((c) => c.gx >= 0 && c.gy >= 0 && c.gx < widthStitches && c.gy < heightStitches)
+  function isErasing(e?: { altKey?: boolean }): boolean {
+    return drawErase || Boolean(e?.altKey)
+  }
+
+  function applyStroke(cells: GridCell[], strokeId: string, e?: { altKey?: boolean }) {
+    const expanded = expandByBrush(cells, drawBrushSize)
+    const onCanvas = expanded.filter((c) => c.gx >= 0 && c.gy >= 0 && c.gx < widthStitches && c.gy < heightStitches)
     if (onCanvas.length === 0) return
-    if (drawErase) onEraseCells(onCanvas, strokeId)
+    if (isErasing(e)) onEraseCells(onCanvas, strokeId)
     else onPaintCells(onCanvas, strokeId)
   }
 
@@ -253,19 +304,113 @@ export function CanvasGrid({
     const at = drawCellAt(e)
     if (!at) return
     e.currentTarget.setPointerCapture(e.pointerId)
-    strokeRef.current = { id: createId(), last: at }
-    applyStroke([at], strokeRef.current.id)
+
+    // Pipette / Eyedropper mode:
+    if (eyedropperActive) {
+      // Find color at clicked cell
+      for (let i = objects.length - 1; i >= 0; i--) {
+        const obj = objects[i]
+        if (obj.kind === 'pixels') {
+          const matching = obj.cells.find((c) => obj.x + c.dx === at.gx && obj.y + c.dy === at.gy)
+          if (matching) {
+            onPickColor?.(matching.color)
+            return
+          }
+        } else {
+          const cells = renderObjectCells(obj)
+          const matching = cells.find((c) => obj.x + c.dx === at.gx && obj.y + c.dy === at.gy)
+          if (matching) {
+            onPickColor?.(cellColor(obj, matching))
+            return
+          }
+        }
+      }
+      return
+    }
+
+    if (drawShape === 'fill') {
+      // Flood fill from the tapped cell:
+      // Build a fast lookup map of colors across all existing objects
+      const occupied = new Map<string, string>()
+      for (const obj of objects) {
+        if (obj.kind === 'pixels') {
+          for (const c of obj.cells) {
+            occupied.set(`${obj.x + c.dx},${obj.y + c.dy}`, c.color.dmcCode)
+          }
+        } else {
+          for (const c of renderObjectCells(obj)) {
+            occupied.set(`${obj.x + c.dx},${obj.y + c.dy}`, cellColor(obj, c).dmcCode)
+          }
+        }
+      }
+      const colorAt = (gx: number, gy: number) => occupied.get(`${gx},${gy}`) ?? null
+      const filledCells = floodFillCells(at, widthStitches, heightStitches, colorAt)
+      if (filledCells.length > 0) {
+        const strokeId = createId()
+        if (isErasing(e)) onEraseCells(filledCells, strokeId)
+        else onPaintCells(filledCells, strokeId)
+      }
+      return
+    }
+
+    const isBox = drawShape === 'rect'
+    const isLine = drawShape === 'line' || e.shiftKey
+    if (isBox || isLine) {
+      const strokeId = createId()
+      lineStartRef.current = { start: at, strokeId, shiftKey: e.shiftKey }
+      const cells = isBox ? rectangleCells(at, at) : expandByBrush([at], drawBrushSize)
+      setLinePreview({ start: at, current: at, cells })
+    } else {
+      strokeRef.current = { id: createId(), last: at }
+      applyStroke([at], strokeRef.current.id, e)
+    }
   }
 
   function handleDrawPointerMove(e: React.PointerEvent) {
-    const stroke = strokeRef.current
     const at = drawCellAt(e)
-    if (!stroke || !at || (at.gx === stroke.last.gx && at.gy === stroke.last.gy)) return
-    applyStroke(lineCells(stroke.last, at).slice(1), stroke.id)
+    if (!at) return
+
+    if (lineStartRef.current) {
+      e.preventDefault()
+      const start = lineStartRef.current.start
+      if (drawShape === 'rect') {
+        const cells = rectangleCells(start, at)
+        setLinePreview({ start, current: at, cells })
+      } else {
+        // If Shift was pressed or is currently pressed, snap to 0/45/90 degrees
+        const snap = lineStartRef.current.shiftKey || e.shiftKey
+        const path = straightLineCells(start, at, snap)
+        const cells = expandByBrush(path, drawBrushSize)
+        setLinePreview({ start, current: at, cells })
+      }
+      return
+    }
+
+    const stroke = strokeRef.current
+    if (!stroke || (at.gx === stroke.last.gx && at.gy === stroke.last.gy)) return
+    applyStroke(lineCells(stroke.last, at).slice(1), stroke.id, e)
     stroke.last = at
   }
 
-  function handleDrawPointerEnd() {
+  function handleDrawPointerEnd(e: React.PointerEvent) {
+    if (lineStartRef.current) {
+      const { start, strokeId, shiftKey } = lineStartRef.current
+      const at = drawCellAt(e) ?? (linePreview ? linePreview.current : start)
+      if (drawShape === 'rect') {
+        const cells = rectangleCells(start, at)
+        const onCanvas = cells.filter((c) => c.gx >= 0 && c.gy >= 0 && c.gx < widthStitches && c.gy < heightStitches)
+        if (onCanvas.length > 0) {
+          if (isErasing(e)) onEraseCells(onCanvas, strokeId)
+          else onPaintCells(onCanvas, strokeId)
+        }
+      } else {
+        const snap = shiftKey || e.shiftKey
+        const path = straightLineCells(start, at, snap)
+        applyStroke(path, strokeId, e)
+      }
+      lineStartRef.current = null
+      setLinePreview(null)
+    }
     strokeRef.current = null
   }
 
@@ -294,7 +439,17 @@ export function CanvasGrid({
         width={pixelWidth}
         height={pixelHeight}
         className="canvas-grid__bg"
-        onPointerDown={() => onSelectionChange([])}
+        onPointerDown={(e) => {
+          if (drawMode || stampMode) return
+          const svgRect = svgRef.current?.getBoundingClientRect()
+          if (!svgRect) return
+          const startX = Math.round((e.clientX - svgRect.left) / cell)
+          const startY = Math.round((e.clientY - svgRect.top) / cell)
+          const additive = multiSelect || e.shiftKey
+          marqueeRef.current = { startX, startY, additive }
+          setMarqueeBox({ x: startX, y: startY, width: 0, height: 0 })
+          ;(e.target as Element).setPointerCapture(e.pointerId)
+        }}
       />
       <g className="canvas-grid__objects">
         {objects.map((obj) => {
@@ -402,19 +557,71 @@ export function CanvasGrid({
           </g>
         )
       })()}
-      {drawMode && (
+      {marqueeBox && (marqueeBox.width > 0 || marqueeBox.height > 0) && (
         <rect
-          x={0}
-          y={0}
-          width={pixelWidth}
-          height={pixelHeight}
-          fill="transparent"
-          className="draw-overlay"
-          onPointerDown={handleDrawPointerDown}
-          onPointerMove={handleDrawPointerMove}
-          onPointerUp={handleDrawPointerEnd}
-          onPointerCancel={handleDrawPointerEnd}
+          x={marqueeBox.x * cell}
+          y={marqueeBox.y * cell}
+          width={marqueeBox.width * cell}
+          height={marqueeBox.height * cell}
+          fill="rgba(100, 108, 255, 0.15)"
+          stroke="#646cff"
+          strokeWidth={1.5}
+          strokeDasharray="4 2"
+          pointerEvents="none"
         />
+      )}
+      {drawMode && (
+        <>
+          {linePreview && (
+            <g className="draw-line-preview" pointerEvents="none">
+              {linePreview.cells.map((c, i) =>
+                stitchRect(
+                  i,
+                  c.gx,
+                  c.gy,
+                  drawErase ? { hex: '#ff4444', dmcCode: 'erase' } : (drawColor ?? { hex: '#310', dmcCode: '310' }),
+                  false,
+                ),
+              )}
+              {/* Optional thin rubber-band stroke connecting centers for visual guidance */}
+              {drawShape === 'rect' ? (
+                <rect
+                  x={Math.min(linePreview.start.gx, linePreview.current.gx) * cell}
+                  y={Math.min(linePreview.start.gy, linePreview.current.gy) * cell}
+                  width={(Math.abs(linePreview.current.gx - linePreview.start.gx) + 1) * cell}
+                  height={(Math.abs(linePreview.current.gy - linePreview.start.gy) + 1) * cell}
+                  fill="none"
+                  stroke={drawErase ? '#ff4444' : '#646cff'}
+                  strokeWidth={2}
+                  strokeDasharray="4 2"
+                />
+              ) : (
+                <line
+                  x1={linePreview.start.gx * cell + cell / 2}
+                  y1={linePreview.start.gy * cell + cell / 2}
+                  x2={linePreview.current.gx * cell + cell / 2}
+                  y2={linePreview.current.gy * cell + cell / 2}
+                  stroke={drawErase ? '#ff4444' : '#646cff'}
+                  strokeWidth={1.5}
+                  strokeDasharray="3 3"
+                  opacity={0.8}
+                />
+              )}
+            </g>
+          )}
+          <rect
+            x={0}
+            y={0}
+            width={pixelWidth}
+            height={pixelHeight}
+            fill="transparent"
+            className={`draw-overlay draw-overlay--${eyedropperActive ? 'pipette' : drawShape || 'free'}`}
+            onPointerDown={handleDrawPointerDown}
+            onPointerMove={handleDrawPointerMove}
+            onPointerUp={handleDrawPointerEnd}
+            onPointerCancel={handleDrawPointerEnd}
+          />
+        </>
       )}
       {stampMode && (
         <rect

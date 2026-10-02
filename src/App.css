@@ -171,6 +171,24 @@ details.tool-section > summary:hover {
   box-sizing: border-box;
 }
 
+.canvas-presets-row {
+  margin-bottom: var(--space-2);
+}
+
+.canvas-presets-row button {
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
+
+.canvas-nudge-row {
+  margin-top: var(--space-2);
+}
+
+.canvas-nudge-row button {
+  font-size: 0.78rem;
+  padding: 4px 8px;
+}
+
 .swatch-row {
   display: flex;
   flex-wrap: wrap;
@@ -619,6 +637,26 @@ details.tool-section > summary:hover {
   cursor: crosshair;
 }
 
+.draw-overlay--fill {
+  cursor: cell;
+}
+
+.draw-overlay--pipette {
+  cursor: copy;
+}
+
+.brush-size-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.brush-size-row .segmented-control {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+}
+
 .resize-handle--nw,
 .resize-handle--se {
   cursor: nwse-resize;
@@ -727,6 +765,21 @@ details.tool-section > summary:hover {
   }
 }
 
+.color-picker__project-section {
+  margin-bottom: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px dashed var(--border);
+}
+
+.color-picker__section-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+.color-picker__project-row {
+  margin-bottom: var(--space-1);
+}
+
 .color-picker__more {
   font-size: 0.8rem;
   padding: 0 var(--space-2);
@@ -764,6 +817,40 @@ details.tool-section > summary:hover {
 
 .palette-list__picker {
   flex-basis: 100%;
+}
+
+.icon-search-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: var(--space-2);
+}
+
+.icon-search-row input {
+  width: 100%;
+  padding-right: 28px;
+}
+
+.icon-search-clear {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.icon-search-clear:hover {
+  color: var(--text);
+}
+
+.icon-search-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .icon-group {
@@ -812,3 +899,90 @@ details.tool-section > summary:hover {
   stroke-width: 1.5;
   stroke-dasharray: 5 3;
 }
+
+.icon-action-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: var(--space-3);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+
+.icon-action-bar__info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.icon-action-bar__preview {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-action-bar__details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.icon-action-bar__name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-action-bar__size {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+}
+
+.icon-action-bar .primary-btn {
+  margin-top: 0;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.border-edit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.side-margins-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.side-margin-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.side-margin-label {
+  font-size: 0.72rem;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.stepper-row--compact {
+  padding: 2px;
+}
+

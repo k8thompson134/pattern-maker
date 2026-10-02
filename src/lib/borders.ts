@@ -1,6 +1,6 @@
 import { createId } from './id'
 import { byCode } from './iconColors'
-import type { PixelCell, PixelObject, StitchColor } from './types'
+import type { BorderMargins, BorderSides, PixelCell, PixelObject, StitchColor } from './types'
 
 // A border style is one repeating tile. Row 0 is the outer edge; '1' is the main color, '2' the accent.
 export type BorderDef = {
@@ -67,6 +67,10 @@ export const BORDERS: BorderDef[] = [
   },
 ]
 
+export function getBorder(id: string): BorderDef {
+  return BORDERS.find((b) => b.id === id) ?? BORDERS[0]
+}
+
 export function borderHasAccent(def: BorderDef): boolean {
   return def.rows.some((r) => r.includes('2'))
 }
@@ -75,9 +79,41 @@ export function defaultBorderColors(def: BorderDef): { main: StitchColor; accent
   return { main: byCode(def.main), accent: byCode(def.accent) }
 }
 
-export function borderFits(def: BorderDef, width: number, height: number, margin: number): boolean {
+export function normalizeMargins(margin: number | Partial<BorderMargins>): BorderMargins {
+  if (typeof margin === 'number') {
+    return { top: margin, bottom: margin, left: margin, right: margin }
+  }
+  const fallback = margin.top ?? margin.bottom ?? margin.left ?? margin.right ?? 0
+  return {
+    top: margin.top ?? fallback,
+    bottom: margin.bottom ?? fallback,
+    left: margin.left ?? fallback,
+    right: margin.right ?? fallback,
+  }
+}
+
+export function normalizeSides(sides?: Partial<BorderSides>): BorderSides {
+  return {
+    top: sides?.top ?? true,
+    bottom: sides?.bottom ?? true,
+    left: sides?.left ?? true,
+    right: sides?.right ?? true,
+  }
+}
+
+export function borderFits(
+  def: BorderDef,
+  width: number,
+  height: number,
+  margin: number | Partial<BorderMargins>,
+  sidesInput?: Partial<BorderSides>,
+): boolean {
   const t = def.rows.length
-  return width - 2 * margin >= 2 * t && height - 2 * margin >= 2 * t
+  const m = normalizeMargins(margin)
+  const sides = normalizeSides(sidesInput)
+  const reqW = (sides.left ? t : 0) + (sides.right ? t : 0)
+  const reqH = (sides.top ? t : 0) + (sides.bottom ? t : 0)
+  return width - m.left - m.right >= Math.max(reqW, t) && height - m.top - m.bottom >= Math.max(reqH, t)
 }
 
 function mod(n: number, m: number): number {
@@ -132,15 +168,20 @@ export function buildBorder(
   def: BorderDef,
   width: number,
   height: number,
-  margin: number,
+  margin: number | Partial<BorderMargins>,
   main: StitchColor,
   accent: StitchColor,
+  sidesInput?: Partial<BorderSides>,
 ): PixelObject | null {
-  if (!borderFits(def, width, height, margin)) return null
+  const m = normalizeMargins(margin)
+  const sides = normalizeSides(sidesInput)
+  if (!sides.top && !sides.bottom && !sides.left && !sides.right) return null
+  if (!borderFits(def, width, height, m, sides)) return null
+
   const t = def.rows.length
   const p = def.rows[0].length
-  const w = width - 2 * margin
-  const h = height - 2 * margin
+  const w = width - m.left - m.right
+  const h = height - m.top - m.bottom
   const cells: PixelCell[] = []
   const inset = def.corner === undefined ? 0 : t
   const planH = planEdge(def, w - 2 * inset)
@@ -148,31 +189,52 @@ export function buildBorder(
 
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const distances = [y, h - 1 - y, x, w - 1 - x]
-      const d = Math.min(...distances)
-      if (d >= t) continue
-      const side = distances.indexOf(d)
+      const activeCandidates: { side: number; d: number }[] = []
+      if (sides.top && y < t) activeCandidates.push({ side: 0, d: y })
+      if (sides.bottom && h - 1 - y < t) activeCandidates.push({ side: 1, d: h - 1 - y })
+      if (sides.left && x < t) activeCandidates.push({ side: 2, d: x })
+      if (sides.right && w - 1 - x < t) activeCandidates.push({ side: 3, d: w - 1 - x })
+
+      if (activeCandidates.length === 0) continue
+
+      activeCandidates.sort((a, b) => a.d - b.d)
+      const { side, d } = activeCandidates[0]
+
       const horizontal = side < 2
       const row = side === 1 && def.upright ? t - 1 - d : d
-      const inCorner = def.corner !== undefined && Math.min(x, w - 1 - x) < t && Math.min(y, h - 1 - y) < t
+
+      const inCorner =
+        def.corner !== undefined &&
+        ((side < 2 && ((sides.left && x < t) || (sides.right && w - 1 - x < t))) ||
+          (side >= 2 && ((sides.top && y < t) || (sides.bottom && h - 1 - y < t))))
+
       const plan = horizontal ? planH : planV
       const along = (horizontal ? x : y) - inset - plan.lead
       const inRun = along >= 0 && along < plan.run
       const column = inCorner || !inRun ? def.corner! : mod(along + plan.phase, p)
       const ch = def.rows[row][column]
       if (ch === '0') continue
-      cells.push({ dx: x, dy: y, color: ch === '2' ? accent : main })
+      cells.push({ dx: m.left + x, dy: m.top + y, color: ch === '2' ? accent : main })
     }
   }
+
+  if (cells.length === 0) return null
 
   const minDx = Math.min(...cells.map((c) => c.dx))
   const minDy = Math.min(...cells.map((c) => c.dy))
   return {
     id: createId(),
     kind: 'pixels',
-    x: margin + minDx,
-    y: margin + minDy,
+    x: minDx,
+    y: minDy,
     hollow: true,
+    borderMeta: {
+      borderId: def.id,
+      margins: m,
+      sides,
+      mainColor: main,
+      accentColor: accent,
+    },
     cells: cells.map((c) => ({ ...c, dx: c.dx - minDx, dy: c.dy - minDy })),
   }
 }
