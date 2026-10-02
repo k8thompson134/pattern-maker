@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { accentDroppedChars, measureText, renderTextToCells, unsupportedChars } from './textRender'
 import {
   AVAILABLE_FONTS,
+  FONT_BLACKLETTER_6X9,
   FONT_BLOCK_5X7,
+  FONT_BOLD_6X7,
+  FONT_BRAILLE,
   FONT_ITALIC_5X9,
   FONT_MIXED_5X9,
   FONT_SCRIPT_6X9,
@@ -234,3 +237,73 @@ describe('cursive script font', () => {
   })
 })
 
+
+describe('bold font', () => {
+  it('draws every vertical stroke two stitches thick', () => {
+    const rows = FONT_BOLD_6X7.glyphs.H
+    expect(rows[0].startsWith('11')).toBe(true)
+    expect(rows[0].endsWith('11')).toBe(true)
+  })
+
+  it('draws M and W seven stitches wide with a gap in the middle row of the strokes', () => {
+    for (const ch of ['M', 'W']) {
+      expect(FONT_BOLD_6X7.glyphs[ch][0].length).toBe(7)
+      expect(FONT_BOLD_6X7.glyphs[ch][0]).toBe('1100011')
+    }
+  })
+
+  it('supports the same characters as Block, and measures exactly what it renders', () => {
+    expect(unsupportedChars('Kate & Sam: 2026! #1 (Home)', FONT_BOLD_6X7)).toEqual([])
+    const text = 'MIGHTY WOW'
+    const cells = renderTextToCells(text, FONT_BOLD_6X7)
+    expect(Math.max(...cells.map((c) => c.dx))).toBe(measureText(text, FONT_BOLD_6X7).width - 1)
+  })
+})
+
+describe('braille font', () => {
+  const key = (cells: { dx: number; dy: number }[]) => cells.map((c) => `${c.dx},${c.dy}`).sort()
+
+  it('draws a as a single dot and l as the full left column', () => {
+    expect(key(renderTextToCells('a', FONT_BRAILLE))).toEqual(['0,0'])
+    expect(key(renderTextToCells('l', FONT_BRAILLE))).toEqual(['0,0', '0,2', '0,4'])
+  })
+
+  it('prefixes capitals with the capital sign and digits with the number sign', () => {
+    const capital = renderTextToCells('A', FONT_BRAILLE)
+    expect(key(capital)).toEqual(['2,4', '5,0'])
+    const one = renderTextToCells('1', FONT_BRAILLE)
+    expect(key(one)).toEqual(['0,4', '2,0', '2,2', '2,4', '5,0'].sort())
+  })
+
+  it('leaves a wider gap between cells than between the dots of one cell', () => {
+    const [a, b] = renderTextToCells('aa', FONT_BRAILLE).map((c) => c.dx)
+    expect(b - a).toBeGreaterThan(2)
+  })
+
+  it('supports letters, digits and basic punctuation but not symbols braille has no single cell for', () => {
+    expect(unsupportedChars('Hello, World! 2026.', FONT_BRAILLE)).toEqual([])
+    expect(unsupportedChars('%', FONT_BRAILLE)).toEqual(['%'])
+  })
+})
+
+describe('blackletter font', () => {
+  it('draws lowercase differently from uppercase', () => {
+    expect(renderTextToCells('a', FONT_BLACKLETTER_6X9)).not.toEqual(renderTextToCells('A', FONT_BLACKLETTER_6X9))
+  })
+
+  it('drops descenders to row 8 and raises ascenders to row 0', () => {
+    expect(Math.max(...renderTextToCells('g', FONT_BLACKLETTER_6X9).map((c) => c.dy))).toBe(8)
+    expect(Math.min(...renderTextToCells('h', FONT_BLACKLETTER_6X9).map((c) => c.dy))).toBe(0)
+  })
+
+  it('supports common punctuation and accented letters', () => {
+    expect(unsupportedChars('Kate & Sam: 2026! #1 (Home)', FONT_BLACKLETTER_6X9)).toEqual([])
+    expect(renderTextToCells('é', FONT_BLACKLETTER_6X9).filter((c) => c.dy < 2).length).toBeGreaterThan(0)
+  })
+
+  it('measures exactly what it renders', () => {
+    const text = 'Ye Olde Shoppe'
+    const cells = renderTextToCells(text, FONT_BLACKLETTER_6X9)
+    expect(Math.max(...cells.map((c) => c.dx))).toBeLessThan(measureText(text, FONT_BLACKLETTER_6X9).width)
+  })
+})

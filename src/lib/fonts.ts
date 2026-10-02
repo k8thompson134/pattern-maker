@@ -465,6 +465,129 @@ export const FONT_SCRIPT_6X9: BitmapFont = {
   },
 }
 
+// --- BOLD 6x7 ---
+// Block 5x7 with every stitch doubled to its right, so verticals are two stitches thick.
+function boldFont(font: BitmapFont, id: string, name: string): BitmapFont {
+  const glyphs: Record<string, string[]> = {}
+  for (const [ch, rows] of Object.entries(font.glyphs)) {
+    if (ch === ' ') continue
+    glyphs[ch] = rows.map((row) => {
+      let out = ''
+      for (let x = 0; x <= row.length; x++) out += row[x] === '1' || row[x - 1] === '1' ? '1' : '0'
+      return out
+    })
+  }
+  glyphs[' '] = G(Array(font.cellHeight).fill('0000'))
+  return { id, name, cellWidth: font.cellWidth + 1, cellHeight: font.cellHeight, glyphs }
+}
+
+// Doubling M and W turns them to solid blocks, and # and * to a blur, so those are drawn by hand.
+const BOLD_OVERRIDES: Record<string, string[]> = {
+  M: G(['1100011', '1110111', '1111111', '1101011', '1100011', '1100011', '1100011']),
+  W: G(['1100011', '1100011', '1100011', '1101011', '1111111', '1110111', '1100011']),
+  '#': G(['011011', '011011', '111111', '011011', '111111', '011011', '011011']),
+  '*': G(['000000', '110011', '011110', '111111', '011110', '110011', '000000']),
+}
+const BOLD_BASE = boldFont(FONT_BLOCK_5X7, 'bold-6x7', 'Bold 6x7')
+export const FONT_BOLD_6X7: BitmapFont = {
+  ...BOLD_BASE,
+  cellWidth: 7,
+  glyphs: { ...BOLD_BASE.glyphs, ...BOLD_OVERRIDES },
+}
+
+// --- BLACKLETTER 9 rows ---
+// Two-stitch stems with angular joins. Capitals borrow the Bold shapes, which stay readable.
+const BLACKLETTER_LOWER: Record<string, string[]> = {
+  a: G(['000000', '000000', '011110', '000110', '011110', '110110', '011111', '000000', '000000']),
+  b: G(['110000', '110000', '111110', '110011', '110011', '110011', '111110', '000000', '000000']),
+  c: G(['000000', '000000', '011110', '110000', '110000', '110000', '011110', '000000', '000000']),
+  d: G(['000011', '000011', '011111', '110011', '110011', '110011', '011111', '000000', '000000']),
+  e: G(['000000', '000000', '011110', '110011', '111111', '110000', '011110', '000000', '000000']),
+  f: G(['001111', '011000', '111110', '011000', '011000', '011000', '011000', '000000', '000000']),
+  g: G(['000000', '000000', '011111', '110011', '110011', '011111', '000011', '110011', '011110']),
+  h: G(['110000', '110000', '110110', '111111', '110011', '110011', '110011', '000000', '000000']),
+  i: G(['00', '11', '00', '11', '11', '11', '11', '00', '00']),
+  j: G(['0000', '0011', '0000', '0011', '0011', '0011', '0011', '0011', '1110']),
+  k: G(['110000', '110000', '110011', '110110', '111100', '110110', '110011', '000000', '000000']),
+  l: G(['11', '11', '11', '11', '11', '11', '11', '00', '00']),
+  m: G(['00000000', '00000000', '11111110', '11011011', '11011011', '11011011', '11011011', '00000000', '00000000']),
+  n: G(['000000', '000000', '111110', '110011', '110011', '110011', '110011', '000000', '000000']),
+  o: G(['000000', '000000', '011110', '110011', '110011', '110011', '011110', '000000', '000000']),
+  p: G(['000000', '000000', '111110', '110011', '110011', '111110', '110000', '110000', '110000']),
+  q: G(['000000', '000000', '011111', '110011', '110011', '011111', '000011', '000011', '000011']),
+  r: G(['00000', '00000', '11110', '11011', '11000', '11000', '11000', '00000', '00000']),
+  s: G(['000000', '000000', '011111', '110000', '011110', '000011', '111110', '000000', '000000']),
+  t: G(['00000', '01100', '11111', '01100', '01100', '01101', '00110', '00000', '00000']),
+  u: G(['000000', '000000', '110011', '110011', '110011', '110011', '011111', '000000', '000000']),
+  v: G(['000000', '000000', '110011', '110011', '110011', '011110', '001100', '000000', '000000']),
+  w: G(['00000000', '00000000', '11011011', '11011011', '11011011', '11011011', '01111110', '00000000', '00000000']),
+  x: G(['000000', '000000', '110011', '011110', '001100', '011110', '110011', '000000', '000000']),
+  y: G(['000000', '000000', '110011', '110011', '110011', '011111', '000011', '110011', '011110']),
+  z: G(['000000', '000000', '111111', '000110', '001100', '011000', '111111', '000000', '000000']),
+}
+
+export const FONT_BLACKLETTER_6X9: BitmapFont = {
+  id: 'blackletter-6x9',
+  name: 'Blackletter 6x9',
+  cellWidth: 8,
+  cellHeight: MIXED_HEIGHT,
+  glyphs: {
+    ...Object.fromEntries(
+      Object.entries(FONT_BOLD_6X7.glyphs)
+        .filter(([ch]) => ch !== ' ')
+        .map(([ch, rows]) => [ch, padRows(rows)]),
+    ),
+    ' ': G(Array(MIXED_HEIGHT).fill('000')),
+    ...BLACKLETTER_LOWER,
+    ...buildAccented(BLACKLETTER_LOWER),
+  },
+}
+
+// --- BRAILLE ---
+// Each braille cell is 2 dots wide and 3 tall, drawn as 4x5 stitches (dots at columns 0 and 2,
+// rows 0, 2 and 4) so the gap between cells is wider than the gap between a cell's own dots.
+const BRAILLE_DOTS: Record<string, number[]> = {
+  a: [1], b: [1, 2], c: [1, 4], d: [1, 4, 5], e: [1, 5], f: [1, 2, 4], g: [1, 2, 4, 5], h: [1, 2, 5],
+  i: [2, 4], j: [2, 4, 5], k: [1, 3], l: [1, 2, 3], m: [1, 3, 4], n: [1, 3, 4, 5], o: [1, 3, 5],
+  p: [1, 2, 3, 4], q: [1, 2, 3, 4, 5], r: [1, 2, 3, 5], s: [2, 3, 4], t: [2, 3, 4, 5], u: [1, 3, 6],
+  v: [1, 2, 3, 6], w: [2, 4, 5, 6], x: [1, 3, 4, 6], y: [1, 3, 4, 5, 6], z: [1, 3, 5, 6],
+  ',': [2], ';': [2, 3], ':': [2, 5], '.': [2, 5, 6], '!': [2, 3, 5], '?': [2, 3, 6], "'": [3],
+  '-': [3, 6], '&': [1, 2, 3, 4, 6],
+}
+const BRAILLE_CAPITAL = [6]
+const BRAILLE_NUMBER = [3, 4, 5, 6]
+const BRAILLE_DIGIT_LETTERS = 'jabcdefghi'
+
+function brailleCell(dots: number[]): string[] {
+  const rows = Array.from({ length: 5 }, () => ['0', '0', '0', '0'])
+  for (const d of dots) rows[((d - 1) % 3) * 2][d > 3 ? 2 : 0] = '1'
+  return rows.map((r) => r.join(''))
+}
+
+function joinCells(...cells: string[][]): string[] {
+  return cells[0].map((_, y) => cells.map((c) => c[y]).join('0'))
+}
+
+function buildBraille(): Record<string, string[]> {
+  const out: Record<string, string[]> = { ' ': G(Array(5).fill('0000')) }
+  for (const [ch, dots] of Object.entries(BRAILLE_DOTS)) {
+    out[ch] = brailleCell(dots)
+    if (/[a-z]/.test(ch)) out[ch.toUpperCase()] = joinCells(brailleCell(BRAILLE_CAPITAL), brailleCell(dots))
+  }
+  for (let d = 0; d <= 9; d++) {
+    out[String(d)] = joinCells(brailleCell(BRAILLE_NUMBER), brailleCell(BRAILLE_DOTS[BRAILLE_DIGIT_LETTERS[d]]))
+  }
+  return out
+}
+
+export const FONT_BRAILLE: BitmapFont = {
+  id: 'braille',
+  name: 'Braille',
+  cellWidth: 9,
+  cellHeight: 5,
+  glyphs: buildBraille(),
+}
+
 export const AVAILABLE_FONTS: BitmapFont[] = [
   FONT_BLOCK_5X7,
   FONT_TINY_3X5,
@@ -472,6 +595,9 @@ export const AVAILABLE_FONTS: BitmapFont[] = [
   FONT_ITALIC_5X9,
   FONT_SERIF_5X9,
   FONT_SCRIPT_6X9,
+  FONT_BOLD_6X7,
+  FONT_BLACKLETTER_6X9,
+  FONT_BRAILLE,
 ]
 
 export function getFont(id: string): BitmapFont {
